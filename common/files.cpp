@@ -30,7 +30,7 @@ void Atlas::Files::deserialize(const std::filesystem::path& path)
   }
 }
 
-bool Atlas::Files::search(const std::string& hash, Size size)
+bool Atlas::Files::has(const std::string& hash, Size size)
 {
   if (files_.contains(hash)) {
     for (const Size& s : files_[hash]) {

@@ -10,8 +10,7 @@ int main(int argc, char* argv[])
   try
   {
     Atlas::Deduplicator deduplicator("hashes.txt");
-    Atlas::MD5 md5;
-    md5("a");
+    deduplicator("D:\\test");
   }
   catch(const std::exception& error)
   {

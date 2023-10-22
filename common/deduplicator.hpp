@@ -15,7 +15,7 @@ namespace Atlas
     Deduplicator(const std::filesystem::path& path);
     ~Deduplicator();
 
-    bool operator()(const std::filesystem::path& path);
+    void operator()(const std::filesystem::path& path);
 
   private:
     Files files_;

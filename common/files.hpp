@@ -14,7 +14,7 @@ namespace Atlas
   {
   public:
     void deserialize(const std::filesystem::path& path);
-    bool search(const std::string& hash, Size size);
+    bool has(const std::string& hash, Size size);
     void serialize(const std::filesystem::path& path) const;
 
   private:
