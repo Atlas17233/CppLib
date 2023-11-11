@@ -22,8 +22,7 @@ void Atlas::Deduplicator::operator()(const std::filesystem::path& path)
       operator()(entry);
     } else {
       if (files_.has(md5_(entry), std::filesystem::file_size(entry))) {
-        //std::filesystem::remove(entry);
-        std::cout << Atlas::getDateTime() << " [WARN] " << entry << " was deleted!\n";
+        std::filesystem::remove(entry);
       }
     }
   }

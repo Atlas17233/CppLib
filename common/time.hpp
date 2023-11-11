@@ -1,4 +1,3 @@
-#pragma once
 #ifndef time_hpp
 #define time_hpp
 

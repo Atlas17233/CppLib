@@ -1,4 +1,3 @@
-#pragma once
 #ifndef files_hpp
 #define files_hpp
 

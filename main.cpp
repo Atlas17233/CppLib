@@ -9,7 +9,7 @@ int main(int argc, char* argv[])
   try
   {
     Atlas::Deduplicator deduplicator("hashes.txt");
-    deduplicator("D:\\test");
+    deduplicator("E:\\dhpe\\010");
   }
   catch(const std::exception& error)
   {

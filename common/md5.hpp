@@ -1,4 +1,3 @@
-#pragma once
 #ifndef md5_hpp
 #define md5_hpp
 

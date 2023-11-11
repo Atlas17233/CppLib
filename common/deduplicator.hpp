@@ -1,4 +1,3 @@
-#pragma once
 #ifndef deduplicator_hpp
 #define deduplicator_hpp
 

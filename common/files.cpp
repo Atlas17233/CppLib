@@ -53,7 +53,7 @@ void Atlas::Files::serialize(const std::filesystem::path& path) const
   }
   for (const std::pair<const std::string, std::vector<Size>>& file : files_) {
     std::string line = file.first;
-    for (const int size : file.second) {
+    for (const Size size : file.second) {
       line += ' ' +  std::to_string(size);
     }
     files << line << std::endl;

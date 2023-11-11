@@ -1,3 +1,6 @@
+#ifndef def_hpp
+#define def_hpp
+
 #include <cstddef>
 #include <cstdint>
 
@@ -16,3 +19,5 @@ namespace Atlas
   using Byte = std::uint8_t;
   using Size = std::size_t;
 }
+
+#endif
