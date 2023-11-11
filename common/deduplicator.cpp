@@ -1,7 +1,5 @@
 #include "deduplicator.hpp"
 #include <filesystem>
-#include <iostream>
-#include "time.hpp"
 
 Atlas::Deduplicator::Deduplicator(const std::filesystem::path& path) :
   hashes_(path)
