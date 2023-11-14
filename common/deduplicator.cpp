@@ -14,14 +14,22 @@ Atlas::Deduplicator::~Deduplicator()
 
 void Atlas::Deduplicator::operator()(const std::filesystem::path& path)
 {
-  std::filesystem::directory_iterator directory(path);
-  for (const std::filesystem::directory_entry& entry : directory) {
-    if (std::filesystem::is_directory(entry)) {
-      operator()(entry);
-    } else {
-      if (files_.has(md5_(entry), std::filesystem::file_size(entry))) {
-        std::filesystem::remove(entry);
-      }
-    }
+  std::filesystem::is_directory(path) ? directory(path) : file(path);
+}
+
+inline void Atlas::Deduplicator::file(const std::filesystem::path& path)
+{
+  if (files_.has(md5_(path), std::filesystem::file_size(path))) {
+    std::filesystem::remove(path);
+  }
+}
+
+void Atlas::Deduplicator::directory(const std::filesystem::path& path)
+{
+  for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(path)) {
+    std::filesystem::is_directory(entry) ? directory(entry) : file(entry);
+  }
+  if (std::filesystem::is_empty(path)) {
+    std::filesystem::remove(path);
   }
 }

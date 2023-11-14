@@ -7,7 +7,6 @@
 #include "def.hpp"
 
 constexpr Atlas::Size BUFFER_SIZE = 1024;
-constexpr Atlas::Byte PADDING[57] = { 0x80 };
 constexpr Atlas::Byte HEX[16] = {
   '0', '1', '2', '3',
   '4', '5', '6', '7',
@@ -45,27 +44,28 @@ std::string Atlas::MD5::operator()(const std::filesystem::path& path)
       count_[1] += size >> 29;
       Uint32 partLen = 64 - index;
       if (size >= partLen) {
-        memcpy(&buffer_[index], buffer, partLen);
+        memcpy(buffer_ + index, buffer, partLen);
         process(buffer_);
         for (i = partLen; i + 63 < size; i += 64) {
-          process(&buffer[i]);
+          process(buffer + i);
         }
         index = 0;
       }
-      memcpy(&buffer_[index], &buffer[i], size - i);
+      memcpy(buffer_ + index, buffer + i, size - i);
     }
   }
-  fs.close();
 
   Uint32 index = (count_[0] >> 3) & 0x3f;
   if (index < 56) {
-    memcpy(&buffer_[index], PADDING, 56 - index);
+    buffer_[index] = 0x80;
+    memset(buffer_ + index + 1, 0, 55 - index);
   } else {
-    memcpy(&buffer_[index], PADDING, 64 - index);
+    buffer_[index] = 0x80;
+    memset(buffer_ + index + 1, 0, 63 - index);
     process(buffer_);
-    memcpy(&buffer_, &PADDING[1], 56);
+    memset(buffer_, 0, 56);
   }
-  memcpy(&buffer_[56], count_, 8);
+  memcpy(buffer_ + 56, count_, 8);
   process(buffer_);
 
   std::string result;

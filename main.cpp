@@ -11,12 +11,12 @@ int main(int argc, char* argv[])
     Atlas::Deduplicator deduplicator("hashes.txt");
     deduplicator("E:\\dhpe\\010");
   }
-  catch(const std::exception& error)
+  catch (const std::exception& error)
   {
     std::cerr << Atlas::getDateTime() << " [ERROR] " << error.what() << '\n';
     return 1;
   }
-  catch(...)
+  catch (...)
   {
     return 2;
   }

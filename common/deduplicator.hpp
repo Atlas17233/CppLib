@@ -16,6 +16,10 @@ namespace Atlas
     void operator()(const std::filesystem::path& path);
 
   private:
+    inline void file(const std::filesystem::path& path);
+    void directory(const std::filesystem::path& path);
+
+  private:
     Files files_;
     MD5 md5_;
     std::filesystem::path hashes_;

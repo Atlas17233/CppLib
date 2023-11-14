@@ -39,9 +39,9 @@ bool Atlas::Files::has(const std::string& hash, Size size)
       }
     }
     files_[hash].push_back(size);
-    return false;
+  } else {
+    files_[hash] = std::vector<Size>{ size };
   }
-  files_[hash] = std::vector<Size>{ size };
   return false;
 }
 
@@ -56,6 +56,6 @@ void Atlas::Files::serialize(const std::filesystem::path& path) const
     for (const Size size : file.second) {
       line += ' ' +  std::to_string(size);
     }
-    files << line << std::endl;
+    files << line << '\n';
   }
 }
