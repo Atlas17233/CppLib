@@ -1,0 +1,65 @@
+{
+  "version": "2.0.0",
+  "windows": {
+    "options": {
+      "shell": {
+        "executable": "cmd",
+        "args": [
+          "/C",
+          "\"C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Auxiliary/Build/vcvars64.bat\"",
+          "&&"
+        ]
+      }
+    }
+  },
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "CMake: Build Debug",
+      "command": "cmake",
+      "args": [
+        "-B", "Build",
+        "&&",
+        "cmake",
+        "--build", "Build",
+        "--config", "Debug",
+        "&&",
+        "Scripts\\ifc.bat",
+        "${workspaceFolderBasename}"
+      ],
+      "problemMatcher": ["$msCompile"],
+      "group": "build"
+    },
+    {
+      "type": "shell",
+      "label": "CMake: Build RelWithDebInfo",
+      "command": "cmake",
+      "args": [
+        "-B", "Build",
+        "&&",
+        "cmake",
+        "--build", "Build",
+        "--config", "RelWithDebInfo",
+        "&&",
+        "Scripts\\ifc.bat",
+        "${workspaceFolderBasename}"
+      ],
+      "problemMatcher": ["$msCompile"],
+      "group": "build"
+    },
+    {
+      "type": "shell",
+      "label": "CMake: Build Release",
+      "command": "cmake",
+      "args": [
+        "--build", "Build",
+        "--config", "Release"
+      ],
+      "problemMatcher": ["$msCompile"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}
