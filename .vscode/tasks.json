@@ -1,44 +1,65 @@
 {
   "version": "2.0.0",
-  /*"windows": {
+  "windows": {
     "options": {
       "shell": {
-        "executable": "cmd.exe",
+        "executable": "cmd",
         "args": [
           "/C",
-          "\"C:/Program Files/Microsoft Visual Studio/2022/Enterprise/Common7/Tools/VsDevCmd.bat\"",
+          "\"C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Auxiliary/Build/vcvars64.bat\"",
           "&&"
         ]
       }
     }
-  },*/
+  },
   "tasks": [
     {
-      "type": "cppbuild",
-      "label": "C/C++: clang++.exe 生成活动文件",
-      "command": "clang++",
+      "type": "shell",
+      "label": "CMake: Build Debug",
+      "command": "cmake",
       "args": [
-        "-std=c++2a",
-        "./common/deduplicator.cpp",
-        "./common/files.cpp",
-        "./common/md5.cpp",
-        "./common/time.cpp",
-        "-fcolor-diagnostics",
-        "-fansi-escape-codes",
-        "-g",
-        "${file}",
-        "-o",
-        "${fileDirname}/${fileBasenameNoExtension}.exe"
+        "-B", "Build",
+        "&&",
+        "cmake",
+        "--build", "Build",
+        "--config", "Debug",
+        "&&",
+        "Scripts\\ifc.bat",
+        "${workspaceFolderBasename}"
       ],
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "problemMatcher": ["$gcc"],
+      "problemMatcher": ["$msCompile"],
+      "group": "build"
+    },
+    {
+      "type": "shell",
+      "label": "CMake: Build RelWithDebInfo",
+      "command": "cmake",
+      "args": [
+        "-B", "Build",
+        "&&",
+        "cmake",
+        "--build", "Build",
+        "--config", "RelWithDebInfo",
+        "&&",
+        "Scripts\\ifc.bat",
+        "${workspaceFolderBasename}"
+      ],
+      "problemMatcher": ["$msCompile"],
+      "group": "build"
+    },
+    {
+      "type": "shell",
+      "label": "CMake: Build Release",
+      "command": "cmake",
+      "args": [
+        "--build", "Build",
+        "--config", "Release"
+      ],
+      "problemMatcher": ["$msCompile"],
       "group": {
         "kind": "build",
         "isDefault": true
-      },
-      "detail": "调试器生成的任务。"
+      }
     }
   ]
 }
