@@ -1,0 +1,8 @@
+essential c++
+effective c++
+more effective c++
+effective modern c++
+代码大全
+计算机是如何工作的 How computers really work
+深度探索c++对象模型
+重构改善既有代码的设计

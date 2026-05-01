@@ -9,9 +9,9 @@ import :Digest;
 
 #define round(F, i0, i1, i2, i3, k, i, s) h[i0] = h[i1] + Atl::rotL(h[i0] + F(i1, i2, i3) + k + m[i], s)
 
-static constexpr Atl::Void process(Atl::Uint digest[4], const Atl::Uint m[16]) noexcept
+static constexpr Atl::Void process(Atl::Uint32 digest[4], const Atl::Uint32 m[16]) noexcept
 {
-  Atl::Uint h[4];
+  Atl::Uint32 h[4];
   Atl::copy(digest, 4, h);
   round(F1, 0, 1, 2, 3, 0xd76aa478,  0,  7);
   round(F1, 3, 0, 1, 2, 0xe8c7b756,  1, 12);
@@ -95,7 +95,7 @@ const Atl::MD5& Atl::MD5::operator()(const Byte* data, Size size) noexcept
   if (data && size) {
     const Byte* i{data};
     for (const Byte* end{data + size - 64}; i <= end; i += 64) {
-      [[msvc::forceinline]] process(data_, (Uint*)i);
+      [[msvc::forceinline]] process(data_, (Uint32*)i);
     }
     copy(i, counter, buffer);
   }
@@ -104,10 +104,10 @@ const Atl::MD5& Atl::MD5::operator()(const Byte* data, Size size) noexcept
     fill(buffer + counter, 56 - counter, 0);
   } else {
     fill(buffer + counter, 64 - counter, 0);
-    process(data_, (Uint*)buffer);
+    process(data_, (Uint32*)buffer);
     fill(buffer, 56, 0);
   }
   ((Size*)buffer)[7] = (size << 3);
-  process(data_, (Uint*)buffer);
+  process(data_, (Uint32*)buffer);
   return *this;
 }

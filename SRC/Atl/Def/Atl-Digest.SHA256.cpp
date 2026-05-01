@@ -19,9 +19,9 @@ import <stdlib.h>;
 #define convertLittleToBig(i) (w[i] = Atl::convertEndian(chunk[i]))
 #define extend(i0, i1, i2, i) (w[i] += s0(i0) + w[i1] + s1(i2))
 
-static constexpr Atl::Void process(Atl::Uint digest[8], const Atl::Uint chunk[16]) noexcept
+static constexpr Atl::Void process(Atl::Uint32 digest[8], const Atl::Uint32 chunk[16]) noexcept
 {
-  Atl::Uint h[8], w[16];
+  Atl::Uint32 h[8], w[16];
   Atl::copy(digest, 8, h);
   round(0, 1, 2, 3, 4, 5, 6, 7, 0x428a2f98, convertLittleToBig( 0));
   round(7, 0, 1, 2, 3, 4, 5, 6, 0x71374491, convertLittleToBig( 1));
@@ -109,7 +109,7 @@ const Atl::SHA256& Atl::SHA256::operator()(const Byte* data, Size size) noexcept
   if (data && size) {
     const Byte* i{data};
     for (const Byte* end{data + size - 64}; i <= end; i += 64) {
-      [[msvc::forceinline]] process(data_, (Uint*)i);
+      [[msvc::forceinline]] process(data_, (Uint32*)i);
     }
     copy(i, counter, buffer);
   }
@@ -118,11 +118,11 @@ const Atl::SHA256& Atl::SHA256::operator()(const Byte* data, Size size) noexcept
     fill(buffer + counter, 56 - counter, 0);
   } else {
     fill(buffer + counter, 64 - counter, 0);
-    process(data_, (Uint*)buffer);
+    process(data_, (Uint32*)buffer);
     fill(buffer, 56, 0);
   }
   ((Size*)buffer)[7] = convertEndian64(size << 3);
-  process(data_, (Uint*)buffer);
+  process(data_, (Uint32*)buffer);
   for (Int i{0}; i < 8; ++i)
   {
     data_[i] = convertEndian(data_[i]);

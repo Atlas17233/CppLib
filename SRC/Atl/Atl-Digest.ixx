@@ -8,7 +8,7 @@ import :String;
 namespace Atl
 {
   template<StringLiteral name, Size size_>
-  class Digest final: public Array<Uint, size_>
+  class Digest final: public Array<Uint32, size_>
   {
   public:
     constexpr Digest(const ConstString& str) noexcept

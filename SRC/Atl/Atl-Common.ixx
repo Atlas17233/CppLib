@@ -6,6 +6,6 @@ namespace Atl
 {
   export
   {
-    [[nodiscard]] constexpr Bool isConstEval() noexcept { return __builtin_is_constant_evaluated(); }
+    ;
   }
 }

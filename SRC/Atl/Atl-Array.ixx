@@ -73,7 +73,7 @@ namespace Atl
       [[nodiscard]] consteval const T* end() const noexcept { return data_ + size_; }
       [[nodiscard]] consteval T* end() noexcept { return data_ + size_; }
 
-      [[nodiscard]] consteval Bool empty() const noexcept { return False; }
+      [[nodiscard]] consteval Bool empty() const noexcept { return false; }
       [[nodiscard]] consteval Size size() const noexcept { return size_; }
       //[[nodiscard]] consteval Size maxSize() const noexcept { return size_; }
 
