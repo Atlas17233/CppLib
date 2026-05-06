@@ -12,7 +12,7 @@ namespace Atl
     class File final: private Data<const Void>
     {
     public:
-      File(const std::filesystem::path& path) noexcept:
+      explicit File(const std::filesystem::path& path) noexcept:
         Data<const Void>{nullptr, std::filesystem::file_size(path)}
       {
         if (size_) {

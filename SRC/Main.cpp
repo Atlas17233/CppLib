@@ -36,6 +36,14 @@ Atl::Int Main(Atl::Int argc, Atl::Char *argv[])
     std::cout << Atl::SHA256{Atl::File{"123.txt"}} << '\n';
     std::cout << Atl::SHA256{Atl::File{"128.txt"}} << '\n';//639c89bb7f5f4cb4cf6714ee5ec108f63aba682b4b45d9a7bf895bf7f13f7703
     //std::cout << Atl::SHA256{Atl::File{"D:/Shared/JUR-286ch.mp4"}} << '\n';
+    char* cs[10000];
+    cs[0] = new char[25];
+    int m = 1000;
+    for (int i{1}; i < 10000; ++i) {
+      cs[i] = new char[25];
+      m = std::abs((long long)(cs[i] - cs[i - 1])) < m ? std::abs((long long)(cs[i] - cs[i - 1])) : m;
+    }
+    std::cout << m;
   }
   catch (const Atl::Exception &error)
   {

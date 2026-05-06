@@ -1,6 +1,7 @@
 export module Atl:Bit;
 
 import :Def;
+import :Type;
 
 namespace Atl
 {
@@ -36,8 +37,8 @@ namespace Atl
     [[nodiscard]] constexpr T rotR(T data, Int n) noexcept { return std::rotr(data, n); }
 
     template<typename To, typename From>
-    requires (sizeof(To) == sizeof(From))
-    [[nodiscard]] constexpr To bitCast(const From& value) noexcept
+    requires (sizeof(To) == sizeof(From) && isTriviallyCopyable<To> && isTriviallyCopyable<From>)
+    [[nodiscard]] constexpr To bit_cast(const From& value) noexcept
     {
       return __builtin_bit_cast(To, value);
     }

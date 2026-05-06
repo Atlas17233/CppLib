@@ -11,7 +11,7 @@ namespace Atl
   class Digest final: public Array<Uint32, size_>
   {
   public:
-    constexpr Digest(const ConstString& str) noexcept
+    explicit constexpr Digest(const ConstString& str) noexcept
     {
       operator()(str);
     }

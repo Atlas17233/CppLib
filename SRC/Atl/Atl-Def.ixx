@@ -24,23 +24,23 @@ namespace Atl
 
     using Char = char;
     using CharW = wchar_t;
-    using Char8 = char8_t;
-    using Char16 = char16_t;
-    using Char32 = char32_t;
+    using UTF8 = char8_t;
+    using UTF16 = char16_t;
+    using UTF32 = char32_t;
 
     using Float = float;
     using Double = double;
 
-    using Byte = unsigned char;
+    using Byte = Uint8;
 
-    using Int = int;
+    using Int = Int32;
 
-    using Size = unsigned long long;
+    using diffPtr = Int64;
+
+    using Size = Uint64;
     constexpr Size KiB{0x400};
     constexpr Size MiB{0x100000};
     constexpr Size GiB{0x40000000};
-
-    using diffPtr = long long;
 
     template<typename T>
     class Data
@@ -58,4 +58,6 @@ namespace Atl
       Size size_;
     };
   }
+
+  extern "C" Atl::Size strlen(const Atl::Char* str);
 }

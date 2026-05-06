@@ -1,4 +1,4 @@
-module Atl:Digest.SHA256;
+module Atl:Digest.SHA2;
 
 import :Digest;
 import <stdlib.h>;

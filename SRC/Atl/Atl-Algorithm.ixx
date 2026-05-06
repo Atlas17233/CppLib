@@ -10,19 +10,19 @@ import <memory.h>;
 namespace Atl
 {
   template<typename T>
-  [[nodiscard]] constexpr Bool isZero(const T& value) {
+  [[nodiscard]] constexpr Bool isAllBitsZero(const T& value) {
     if constexpr (isNullPointer<T>) {
       return true;
     } else if constexpr (isIntegral<T> || isPointer<T>) {
       return !value;
     } else if constexpr (sizeof(T) == 1) {
-      return !bitCast<Uint8>(value);
+      return !bit_cast<Uint8>(value);
     } else if constexpr (sizeof(T) == 2) {
-      return !bitCast<Uint16>(value);
+      return !bit_cast<Uint16>(value);
     } else if constexpr (sizeof(T) == 4) {
-      return !bitCast<Uint32>(value);
+      return !bit_cast<Uint32>(value);
     } else if constexpr (sizeof(T) == 8) {
-      return !bitCast<Uint64>(value);
+      return !bit_cast<Uint64>(value);
     } else {
       static constexpr T zero{};
       return !compare(&value, &zero, sizeof(T));
