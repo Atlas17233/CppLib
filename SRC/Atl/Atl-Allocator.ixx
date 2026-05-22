@@ -36,17 +36,26 @@ namespace Atl
       public:
       struct alignas(0x10) Node
       {
+        struct LR
+        {
+          UInt16 l;
+          UInt16 r;
+        };
         UInt16 index;
         UInt16 size;
-        union {
+        union
+        {
           UInt16 cPriority;
           UInt8 pagePriority;
         };
-        UInt16 cL;
-        UInt16 cR;
+        LR c;
         UInt8 pPriority;
-        UInt16 pL;
-        UInt16 pR;
+        union
+        {
+          UInt32 pLR;
+          LR p;
+        };
+        
 
         static constexpr UInt8 priority[0x100]
         {
@@ -77,11 +86,9 @@ namespace Atl
           }
           cPriority = i;
           pagePriority = priority[i & 0xff];
-          cL = 0;
-          cR = 0;
+          c = {};
           pPriority = _tzcnt_u32(min(s, 4095ui16));
-          pL = 0;
-          pR = 0;
+          p = {};
         }
       };
 
@@ -97,22 +104,21 @@ namespace Atl
       {
         Node* l = nodes_;
         Node* r = nodes_;
-        UInt32& pLR = (UInt32&)nodes_->pL;
-        pLR = 0;
+        nodes_->pLR = 0;
         while (treap != nodes_) {
           if (treap->size < size) {
-            l->pR = treap->index;
+            l->p.r = treap->index;
             l = treap;
-            treap = nodes_ + treap->pR;
-            l->pR = 0;
+            treap = nodes_ + treap->p.r;
+            l->p.r = 0;
           } else {
-            r->pL = treap->index;
+            r->p.l = treap->index;
             r = treap;
-            treap = nodes_ + treap->pL;
-            r->pL = 0;
+            treap = nodes_ + treap->p.l;
+            r->p.l = 0;
           }
         }
-        return {nodes_ + nodes_->pR, nodes_ + nodes_->pL};
+        return {nodes_ + nodes_->p.r, nodes_ + nodes_->p.l};
       }
 
       SplitLMR splitP3(Node* treap, UInt16 size)
@@ -120,27 +126,26 @@ namespace Atl
         Node* l = nodes_;
         Node* m = nodes_;
         Node* r = nodes_;
-        UInt32& pLR = (UInt32&)nodes_->pL;
-        pLR = 0;
+        nodes_->pLR = 0;
         while (treap != nodes_) {
           if (treap->size == size) {
             m = treap;
-            l->pR = treap->pL;
-            r->pL = treap->pR;
+            l->p.r = treap->p.l;
+            r->p.l = treap->p.r;
             break;
           } else if (treap->size < size) {
-            l->pR = treap->index;
+            l->p.r = treap->index;
             l = treap;
-            treap = nodes_ + treap->pR;
-            l->pR = 0;
+            treap = nodes_ + treap->p.r;
+            l->p.r = 0;
           } else {
-            r->pL = treap->index;
+            r->p.l = treap->index;
             r = treap;
-            treap = nodes_ + treap->pL;
-            r->pL = 0;
+            treap = nodes_ + treap->p.l;
+            r->p.l = 0;
           }
         }
-        return {nodes_ + nodes_->pR, m, nodes_ + nodes_->pL};
+        return {nodes_ + nodes_->p.r, m, nodes_ + nodes_->p.l};
       }
 
       UInt16 mergeP2(Node* l, Node* r)
@@ -150,12 +155,12 @@ namespace Atl
         while (l != nodes_ && r != nodes_) {
           if (l->pPriority > r->pPriority) {
             *pos = l->index;
-            pos = &l->pR;
-            l = nodes_ + l->pR;
+            pos = &l->p.r;
+            l = nodes_ + l->p.r;
           } else {
             *pos = r->index;
-            pos = &r->pL;
-            r = nodes_ + r->pL;
+            pos = &r->p.l;
+            r = nodes_ + r->p.l;
           }
         }
         *pos = l->index ? l->index : r->index;
@@ -170,19 +175,19 @@ namespace Atl
           if (l->pPriority > r->pPriority) {
             if (l->pPriority > m->pPriority) {
               *pos = l->index;
-              pos = &l->pR;
-              l = nodes_ + l->pR;
+              pos = &l->p.r;
+              l = nodes_ + l->p.r;
               continue;
             }
           } else if(m->pPriority <= r->pPriority) {
             *pos = r->index;
-            pos = &r->pL;
-            r = nodes_ + r->pL;
+            pos = &r->p.l;
+            r = nodes_ + r->p.l;
             continue;
           }
           *pos = m->index;
-          m->pL = l->index;
-          m->pR = r->index;
+          m->p.l = l->index;
+          m->p.r = r->index;
           return root;
         }
         if (l == nodes_) l = m;
@@ -190,12 +195,12 @@ namespace Atl
         while (l != nodes_ && r != nodes_) {
           if (l->pPriority > r->pPriority) {
             *pos = l->index;
-            pos = &l->pR;
-            l = nodes_ + l->pR;
+            pos = &l->p.r;
+            l = nodes_ + l->p.r;
           } else {
             *pos = r->index;
-            pos = &r->pL;
-            r = nodes_ + r->pL;
+            pos = &r->p.l;
+            r = nodes_ + r->p.l;
           }
         }
         *pos = l->index ? l->index : r->index;
@@ -236,9 +241,9 @@ namespace Atl
 
       Void printTreeHorizontal(Node& r, int depth = 0, const std::string& prefix = "") {
         if (&r == nodes_) return;
-        printTreeHorizontal(nodes_[r.pR], depth + 1, prefix);
+        printTreeHorizontal(nodes_[r.p.r], depth + 1, prefix);
         std::cout << std::string(depth * 4, ' ') << r.size << std::endl;
-        printTreeHorizontal(nodes_[r.pL], depth + 1, prefix);
+        printTreeHorizontal(nodes_[r.p.l], depth + 1, prefix);
       }
 
       Pair<UInt16&, Node&> searchSize(UInt16 size) noexcept
@@ -252,11 +257,11 @@ namespace Atl
           if (size <= node->size) {
             targetParent = parent;
             target = node;
-            parent = &node->pL;
-            node = nodes_ + node->pL;
+            parent = &node->p.l;
+            node = nodes_ + node->p.l;
           } else {
-            parent = &node->pR;
-            node = nodes_ + node->pR;
+            parent = &node->p.r;
+            node = nodes_ + node->p.r;
           }
         }
         return {*targetParent, *target};
@@ -271,7 +276,7 @@ namespace Atl
 
       [[nodiscard]] Void* allocate(UInt16 size) noexcept {
         Pair<UInt16&, Node&> root{searchSize(size)};
-        if (root.r.cL != root.r.cR) {
+        if (root.r.c.l != root.r.c.r) {
           //remove root.r from indexTreap
           //root.l = newIndexTreapRoot.index
           //newindexTreap.pL = root.r.pL
