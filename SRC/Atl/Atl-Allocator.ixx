@@ -10,146 +10,6 @@ namespace Atl
   export
   {
     using Memory = Data<Void>;
-    struct Test
-    {
-      struct alignas(0x10) Node
-      {
-        UInt16 index;
-        UInt16 size;
-        UInt8 pPriority;
-        UInt16 pL;
-        UInt16 pR;
-
-        Void init(UInt16 i, UInt16 s) noexcept
-        {
-          index = i;
-          size = s;
-          pPriority = _tzcnt_u32(min(s, 4095ui16));
-          pL = 0;
-          pR = 0;
-        }
-      };
-
-      Test() noexcept: nodes_{(Node*)alloc<Node>(1_MiB)}
-      {
-        nodes_[0].init(0, 0);
-      }
-
-      Node* nodes_;
-
-      Pair<UInt16> splitP(Node& treap, UInt16 size)
-      {
-        if (treap.size < size) {
-          Pair<UInt16> subTreap{treap.pR ? splitP(nodes_[treap.pR], size) : Pair<UInt16>{0, 0}};
-          treap.pR = subTreap.l;
-          return {treap.index, subTreap.r};
-        } else {
-          Pair<UInt16> subTreap{treap.pL ? splitP(nodes_[treap.pL], size) : Pair<UInt16>{0, 0}};
-          treap.pL = subTreap.r;
-          return {subTreap.l, treap.index};
-        }
-      }
-
-      Pair<UInt16> split(Node* treap, UInt16 size)
-      {
-        Pair<UInt16> subTreap;
-        UInt16 lh = 0;
-        UInt16 lt = 0;
-        UInt16 rh = 0;
-        UInt16 rt = 0;
-        while (treap != nodes_) {
-          if (treap->size < size) {
-            if (!lh) lh = treap->index;
-            else nodes_[lt].pR = treap->index;
-            lt = treap->index;
-            treap = nodes_ + treap->pR;
-            nodes_[lt].pR = 0;
-          } else {
-            if (!rh) rh = treap->index;
-            else nodes_[rt].pL = treap->index;
-            rt = treap->index;
-            treap = nodes_ + treap->pL;
-            nodes_[rt].pL = 0;
-          }
-        }
-        subTreap.l = lh;
-        subTreap.r = rh;
-        return subTreap;
-      }
-
-      UInt16 mergeP(Node& l, Node& r)
-      {
-        if (l.pPriority > r.pPriority) {
-          l.pR = l.pR && r.index ? mergeP(nodes_[l.pR], r) : l.pR + r.index;
-          return l.index;
-        } else {
-          r.pL = l.index && r.pL ? mergeP(l, nodes_[r.pL]) : l.index + r.pL;
-          return r.index;
-        }
-      }
-
-      UInt16 merge(Node* l, Node* r)
-      {
-        UInt16 root = 0;
-        UInt16* pos = &root;
-        while (l->index && r->index) {
-          if (l->pPriority > r->pPriority) {
-            *pos = l->index;
-            pos = &l->pR;
-            l = nodes_ + l->pR;
-          } else {
-            *pos = r->index;
-            pos = &r->pL;
-            r = nodes_ + r->pL;
-          }
-        }
-        *pos = l->index ? l->index : r->index;
-        return root;
-      }
-
-      Void insertP(UInt16 index, UInt16 size)
-      {
-        if (!nodes_->size) {
-          nodes_->size = size;
-          nodes_[index].init(index, size);
-          return;
-        }
-        Pair<UInt16> L_MR = nodes_->size ? splitP(nodes_[nodes_->size], size) : Pair<UInt16>{0, 0};
-        Pair<UInt16> M_R = L_MR.r ? splitP(nodes_[L_MR.r], size + 1) : Pair<UInt16>{0, 0};
-        nodes_[index].init(index, size);
-        UInt16 MR{index && M_R.r ? mergeP(nodes_[index], nodes_[M_R.r]) : (UInt16)(index + M_R.r)};
-        nodes_->size = L_MR.l && MR ? mergeP(nodes_[L_MR.l], nodes_[MR]) : L_MR.l + MR;
-      }
-
-      Void insert(UInt16 index, UInt16 size)
-      {
-        if (!nodes_->size) {
-          nodes_->size = size;
-          nodes_[index].init(index, size);
-          return;
-        }
-        Pair<UInt16> L_MR = nodes_->size ? split(nodes_ + nodes_->size, size) : Pair<UInt16>{0, 0};
-        Pair<UInt16> M_R = L_MR.r ? split(nodes_ + L_MR.r, size + 1) : Pair<UInt16>{0, 0};
-        nodes_[index].init(index, size);
-        UInt16 MR{index && M_R.r ? merge(nodes_ + index, nodes_ + M_R.r) : (UInt16)(index + M_R.r)};
-        nodes_->size = L_MR.l && MR ? merge(nodes_ + L_MR.l, nodes_ + MR) : L_MR.l + MR;
-      }
-
-      Void remove(UInt16 size)
-      {
-        Pair<UInt16> L_MR = nodes_->size ? splitP(nodes_[nodes_->size], size) : Pair<UInt16>{0, 0};
-        Pair<UInt16> M_R = L_MR.r ? splitP(nodes_[L_MR.r], size + 1) : Pair<UInt16>{0, 0};
-        nodes_->size = L_MR.l && M_R.r ? mergeP(nodes_[L_MR.l], nodes_[M_R.r]) : L_MR.l + M_R.r;
-        //return {nodes_ + M_R.l, /*size*/};
-      }
-
-      Void printTreeHorizontal(Node& r, int depth = 0, const std::string& prefix = "") {
-        if (&r == nodes_) return;
-        printTreeHorizontal(nodes_[r.pR], depth + 1, prefix);
-        std::cout << std::string(depth * 4, ' ') << r.size << std::endl;
-        printTreeHorizontal(nodes_[r.pL], depth + 1, prefix);
-      }
-    };
 
     template <typename Type>
     class LargeAllocator final
@@ -225,67 +85,161 @@ namespace Atl
         }
       };
 
-      Pair<UInt16> splitP(Node& treap, UInt16 index)
+      using SplitLR = Pair<Node*>;
+      struct SplitLMR
       {
-        if (treap.index < index) {
-          Pair<UInt16> subTreap{treap.pR ? splitP(nodes_[treap.pR], index) : Pair<UInt16>{0, 0}};
-          treap.pR = subTreap.l;
-          return {treap.index, subTreap.r};
-        } else {
-          Pair<UInt16> subTreap{treap.pL ? splitP(nodes_[treap.pL], index) : Pair<UInt16>{0, 0}};
-          treap.pL = subTreap.r;
-          return {subTreap.l, treap.index};
+        Node* l{0};
+        Node* m{0};
+        Node* r{0};
+      };
+
+      SplitLR splitP2(Node* treap, UInt16 size)
+      {
+        Node* l = nodes_;
+        Node* r = nodes_;
+        UInt32& pLR = (UInt32&)nodes_->pL;
+        pLR = 0;
+        while (treap != nodes_) {
+          if (treap->size < size) {
+            l->pR = treap->index;
+            l = treap;
+            treap = nodes_ + treap->pR;
+            l->pR = 0;
+          } else {
+            r->pL = treap->index;
+            r = treap;
+            treap = nodes_ + treap->pL;
+            r->pL = 0;
+          }
         }
+        return {nodes_ + nodes_->pR, nodes_ + nodes_->pL};
       }
 
-      UInt16 mergeP(Node& l, Node& r)
+      SplitLMR splitP3(Node* treap, UInt16 size)
       {
-        if (l.pPriority > r.pPriority) {
-          l.pR = l.pR && r.index ? mergeP(nodes_[l.pR], r) : l.pR + r.index;
-          return l.index;
-        } else {
-          r.pL = l.index && r.pL ? mergeP(l, nodes_[r.pL]) : l.index + r.pL;
-          return r.index;
+        Node* l = nodes_;
+        Node* m = nodes_;
+        Node* r = nodes_;
+        UInt32& pLR = (UInt32&)nodes_->pL;
+        pLR = 0;
+        while (treap != nodes_) {
+          if (treap->size == size) {
+            m = treap;
+            l->pR = treap->pL;
+            r->pL = treap->pR;
+            break;
+          } else if (treap->size < size) {
+            l->pR = treap->index;
+            l = treap;
+            treap = nodes_ + treap->pR;
+            l->pR = 0;
+          } else {
+            r->pL = treap->index;
+            r = treap;
+            treap = nodes_ + treap->pL;
+            r->pL = 0;
+          }
         }
+        return {nodes_ + nodes_->pR, m, nodes_ + nodes_->pL};
       }
 
-      Pair<UInt16> splitC(Node& treap, UInt16 index)
+      UInt16 mergeP2(Node* l, Node* r)
       {
-        if (treap.index < index) {
-          Pair<UInt16> subTreap{treap.cR ? splitC(nodes_[treap.cR], index) : Pair<UInt16>{0, 0}};
-          treap.cR = subTreap.l;
-          return {treap.index, subTreap.r};
-        } else {
-          Pair<UInt16> subTreap{treap.cL ? splitC(nodes_[treap.cL], index) : Pair<UInt16>{0, 0}};
-          treap.cL = subTreap.r;
-          return {subTreap.l, treap.index};
+        UInt16 root = 0;
+        UInt16* pos = &root;
+        while (l != nodes_ && r != nodes_) {
+          if (l->pPriority > r->pPriority) {
+            *pos = l->index;
+            pos = &l->pR;
+            l = nodes_ + l->pR;
+          } else {
+            *pos = r->index;
+            pos = &r->pL;
+            r = nodes_ + r->pL;
+          }
         }
+        *pos = l->index ? l->index : r->index;
+        return root;
       }
 
-      UInt16 mergeC(Node& l, Node& r)
+      UInt16 mergeP3(Node* l, Node* m, Node* r)
       {
-        if (l.cPriority < r.cPriority) {
-          l.cR = l.cR && r.index ? mergeC(nodes_[l.cR], r) : l.cR + r.index;
-          return l.index;
-        } else {
-          r.cL = l.index && r.cL ? mergeC(l, nodes_[r.cL]) : l.index + r.cL;
-          return r.index;
+        UInt16 root = 0;
+        UInt16* pos = &root;
+        while (l != nodes_ && r != nodes_) {
+          if (l->pPriority > r->pPriority) {
+            if (l->pPriority > m->pPriority) {
+              *pos = l->index;
+              pos = &l->pR;
+              l = nodes_ + l->pR;
+              continue;
+            }
+          } else if(m->pPriority <= r->pPriority) {
+            *pos = r->index;
+            pos = &r->pL;
+            r = nodes_ + r->pL;
+            continue;
+          }
+          *pos = m->index;
+          m->pL = l->index;
+          m->pR = r->index;
+          return root;
         }
+        if (l == nodes_) l = m;
+        else r = m;
+        while (l != nodes_ && r != nodes_) {
+          if (l->pPriority > r->pPriority) {
+            *pos = l->index;
+            pos = &l->pR;
+            l = nodes_ + l->pR;
+          } else {
+            *pos = r->index;
+            pos = &r->pL;
+            r = nodes_ + r->pL;
+          }
+        }
+        *pos = l->index ? l->index : r->index;
+        return root;
       }
 
-      Void insertC(Node& root, UInt16 index, UInt8 size)
+      Void insert(UInt16 index, UInt16 size)
       {
-        //merge memory block
-
-        Pair<UInt16> L_MR = splitC(root, index);
-        Pair<UInt16> M_R = splitC(nodes_[L_MR.l], index - 1);
-        nodes_[index].index = index;
-        nodes_[index].size = size;
-        Node& l_tr_combined = nodes_[mergeC(nodes_[M_R.l], !M_R.r ? nodes_[index] : nodes_[M_R.r])];
-        /*get root*/ mergeC(l_tr_combined, nodes_[L_MR.r]);
+        nodes_[index].init(index, size);
+        if (!nodes_->size) [[unlikely]] {
+          nodes_->size = size;
+          return;
+        }
+        SplitLMR LMR = splitP3(nodes_ + nodes_->size, size);
+        if (LMR.l == nodes_) nodes_->size = mergeP2(nodes_ + index, LMR.r);
+        else if (LMR.r == nodes_) nodes_->size = mergeP2(LMR.l, nodes_ + index);
+        else nodes_->size = mergeP3(LMR.l, nodes_ + index, LMR.r);
       }
 
-      Void removeC(Node& root, UInt16 index) {}
+      Void insert2(UInt16 index, UInt16 size)
+      {
+        nodes_[index].init(index, size);
+        if (!nodes_->size) [[unlikely]] {
+          nodes_->size = size;
+          return;
+        }
+        SplitLR LR = splitP2(nodes_ + nodes_->size, size);
+        UInt16 MR{index && LR.r != nodes_ ? mergeP2(nodes_ + index, LR.r) : (UInt16)(index + LR.r->index)};
+        nodes_->size = LR.l != nodes_ && MR ? mergeP2(LR.l, nodes_ + MR) : LR.l->index + MR;
+      }
+
+      Void remove(UInt16 size)
+      {
+        SplitLMR LMR = splitP3(nodes_ + nodes_->size, size);
+        nodes_->size = LMR.l != nodes_ && LMR.r != nodes_ ? mergeP2(LMR.l, LMR.r) : LMR.l->index + LMR.r->index;
+        //return {nodes_ + M_R.l, /*size*/};
+      }
+
+      Void printTreeHorizontal(Node& r, int depth = 0, const std::string& prefix = "") {
+        if (&r == nodes_) return;
+        printTreeHorizontal(nodes_[r.pR], depth + 1, prefix);
+        std::cout << std::string(depth * 4, ' ') << r.size << std::endl;
+        printTreeHorizontal(nodes_[r.pL], depth + 1, prefix);
+      }
 
       Pair<UInt16&, Node&> searchSize(UInt16 size) noexcept
       {
