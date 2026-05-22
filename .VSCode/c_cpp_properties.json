@@ -9,7 +9,8 @@
       "cppStandard": "c++26",
       "compilerPath": "cl.exe",
       "compilerArgs": [
-        "/ifcSearchDir", "${workspaceFolder}/Build/ifc"
+        "/ifcSearchDir", "${workspaceFolder}/Build/ifc",
+        "/arch:AVX2"
       ]
     }
   ],

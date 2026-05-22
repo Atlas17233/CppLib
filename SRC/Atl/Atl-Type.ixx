@@ -21,13 +21,13 @@ namespace Atl
     }
   };
 
-  export template <Bool v>
-  using ConstBool = ConstIntegral<Bool, v>;
+  export template <Bool value>
+  using ConstBool = ConstIntegral<Bool, value>;
 
   export using True  = ConstBool<true>;
   export using False = ConstBool<false>;
 
-  template <Bool v, typename T = Void>
+  template <Bool value, typename Type = Void>
   struct EnableIf {};
 
   template <typename T>
@@ -36,146 +36,149 @@ namespace Atl
     using Type = T;
   };
 
-  export template <Bool b, typename T = Void>
-  using enableIf = EnableIf<b, T>::Type;
+  export template <Bool value, typename Type = Void>
+  using enableIf = EnableIf<value, Type>::Type;
 
-  export template <Bool b, typename T1, typename T2>
+  export template <Bool value, typename Type1, typename Type2>
   struct Conditional
   {
-    using Type = T1;
+    using Type = Type1;
   };
 
-  template <typename T1, typename T2>
-  struct Conditional<false, T1, T2>
+  template <typename Type1, typename Type2>
+  struct Conditional<false, Type1, Type2>
   {
-    using Type = T2;
+    using Type = Type2;
   };
 
-  export template <Bool b, typename T1, typename T2>
-  using conditional = Conditional<b, T1, T2>::Type;
+  export template <Bool value, typename Type1, typename Type2>
+  using conditional = Conditional<value, Type1, Type2>::Type;
 
   export template<typename, typename>
   constexpr Bool isSame{false};
 
-  template<typename T>
-  constexpr Bool isSame<T, T>{true};
+  template<typename Type>
+  constexpr Bool isSame<Type, Type>{true};
 
   template<typename T>
-  struct ConstRemover
+  struct RemoveConst
   {
     using Type = T;
   };
 
   template<typename T>
-  struct ConstRemover<const T>
+  struct RemoveConst<const T>
   {
     using Type = T;
   };
 
   template<typename T>
-  struct VolatileRemover
+  struct RemoveVolatile
   {
     using Type = T;
   };
 
   template<typename T>
-  struct VolatileRemover<volatile T>
+  struct RemoveVolatile<volatile T>
   {
     using Type = T;
   };
 
   template<typename T>
-  struct ConstVolatileRemover
+  struct RemoveConstVolatile
   {
     using Type = T;
 
-    template<template<typename> typename F>
-    using _Apply = F<T>;
+    template<template<typename> typename Function>
+    using _Apply = Function<T>;
   };
 
   template<typename T>
-  struct ConstVolatileRemover<const T>
+  struct RemoveConstVolatile<const T>
   {
     using Type = T;
 
-    template<template<typename> typename F>
-    using _Apply = const F<T>;
+    template<template<typename> typename Function>
+    using _Apply = const Function<T>;
   };
 
   template<typename T>
-  struct ConstVolatileRemover<volatile T>
+  struct RemoveConstVolatile<volatile T>
   {
     using Type = T;
 
-    template<template<typename> typename F>
-    using _Apply = volatile F<T>;
+    template<template<typename> typename Function>
+    using _Apply = volatile Function<T>;
   };
 
   template<typename T>
-  struct ConstVolatileRemover<const volatile T>
+  struct RemoveConstVolatile<const volatile T>
   {
     using Type = T;
 
-    template<template<typename> typename F>
-    using _Apply = const volatile F<T>;
+    template<template<typename> typename Function>
+    using _Apply = const volatile Function<T>;
   };
 
-  export template<typename T>
-  using removeC = ConstRemover<T>::Type;
+  export template<typename Type>
+  using removeC = RemoveConst<Type>::Type;
 
-  export template<typename T>
-  using removeV = VolatileRemover<T>::Type;
+  export template<typename Type>
+  using removeV = RemoveVolatile<Type>::Type;
 
-  export template<typename T>
-  using removeCV = ConstVolatileRemover<T>::Type;
+  export template<typename Type>
+  using removeCV = RemoveConstVolatile<Type>::Type;
 
-  template<typename T, typename... Ts>
-  constexpr Bool isAnyOf{(isSame<T, Ts> || ...)};
+  template<typename Type, typename... Types>
+  constexpr Bool isAnyOf{(isSame<Type, Types> || ...)};
 
-  [[nodiscard]] constexpr Bool isConstEval() noexcept { return __builtin_is_constant_evaluated(); }
+  template<typename Type>
+  constexpr Bool isSignedIntegral{isAnyOf<removeCV<Type>, Char, Int8, Int16, Int32, Int64>};
 
-  export template<typename T>
-  constexpr Bool isIntegral{isAnyOf<removeCV<T>,
-      Bool, Char, CharW, UTF8, UTF16, UTF32, Int8, Uint8, Int16, Uint16, Int32, Uint32, Int64, Uint64>};
+  template<typename Type>
+  constexpr Bool isUnsignedIntegral{isAnyOf<removeCV<Type>, Bool, CharW, UTF8, UTF16, UTF32, UInt8, UInt16, UInt32, UInt64>};
 
-template <typename T>
-constexpr bool isNonboolIntegral = isIntegral<T> && !isSame<removeCV<T>, Bool>;
+  export template<typename Type>
+  constexpr Bool isIntegral{isSignedIntegral<Type> || isUnsignedIntegral<Type>};
 
-  export template<typename T>
-  constexpr Bool isFloating{isAnyOf<removeCV<T>, Float, Double>};
+  template <typename Type>
+  constexpr Bool isNonboolIntegral = isIntegral<Type> && !isSame<removeCV<Type>, Bool>;
+
+  export template<typename Type>
+  constexpr Bool isFloating{isAnyOf<removeCV<Type>, Float, Double>};
+
+  export template <typename Type>
+  constexpr Bool isArithmetic{isIntegral<Type> || isFloating<Type>};
 
   export template <typename T>
-  constexpr Bool isArithmetic{isIntegral<T> || isFloating<T>};
-
-  export template <typename T>
-  struct ReferenceRemover
+  struct RemoveReference
   {
     using Type = T;
     using ConstThroughReference = const T;
   };
 
   template <typename T>
-  struct ReferenceRemover<T&>
+  struct RemoveReference<T&>
   {
     using Type = T;
     using ConstThroughReference = const T&;
   };
 
   template <typename T>
-  struct ReferenceRemover<T&&>
+  struct RemoveReference<T&&>
   {
     using Type = T;
     using ConstThroughReference = const T&&;
   };
 
-  export template <typename T>
-  using removeR = ReferenceRemover<T>::Type;
+  export template <typename Type>
+  using removeR = RemoveReference<Type>::Type;
 
-  export template <typename T>
-  using removeCVR [[msvc::known_semantics]] = removeCV<removeR<T>>;
+  export template <typename Type>
+  using removeCVR [[msvc::known_semantics]] = removeCV<removeR<Type>>;
 
-  template <typename T>
-  using ConstThroughReference = ReferenceRemover<T>::ConstThroughReference;
+  template <typename Type>
+  using ConstThroughReference = RemoveReference<Type>::ConstThroughReference;
 
   export template <Bool... rest>
   constexpr Bool allTrue{true};
@@ -186,301 +189,301 @@ constexpr bool isNonboolIntegral = isIntegral<T> && !isSame<removeCV<T>, Bool>;
   template <Bool... rest>
   constexpr Bool allTrue<true, rest...>{allTrue<rest...>};
 
-  export template <typename T>
-  constexpr Bool isVoid = isSame<removeCV<T>, Void>;
+  export template <typename Type>
+  constexpr Bool isVoid = isSame<removeCV<Type>, Void>;
 
   export template <typename... Types>
   using Vaild = Void;
 
-  export template <typename T>
-  using addConst = const T;
+  export template <typename Type>
+  using Const = const Type;
 
-  export template <typename T>
-  using addVolatile = volatile T;
+  export template <typename Type>
+  using Volatile = volatile Type;
 
-  export template <typename T>
-  using addConstVolatile = const volatile T;
+  export template <typename Type>
+  using ConstVolatile = const volatile Type;
 
-  template <typename T, typename = Void>
-  struct ReferenceAdder
+  template <typename Type, typename = Void>
+  struct AddReference
   {
-    using Lvalue = T;
-    using Rvalue = T;
+    using Lvalue = Type;
+    using Rvalue = Type;
   };
 
-  template <typename T>
-  struct ReferenceAdder<T, Vaild<T&>>
+  template <typename Type>
+  struct AddReference<Type, Vaild<Type&>>
   {
-    using Lvalue = T&;
-    using Rvalue = T&&;
+    using Lvalue = Type&;
+    using Rvalue = Type&&;
   };
 
-  export template <typename T>
-  using addLvalueReference = ReferenceAdder<T>::Lvalue;
+  export template <typename Type>
+  using lvalueReference = AddReference<Type>::Lvalue;
+
+  export template <typename Type>
+  using rvalueReference = AddReference<Type>::Rvalue;
+
+  export template <typename Type>
+  rvalueReference<Type> declvalue() noexcept;
 
   export template <typename T>
-  using addRvalueReference = ReferenceAdder<T>::Rvalue;
-
-  export template <typename T>
-  addRvalueReference<T> declvalue() noexcept;
-
-  export template <typename T>
-  struct ExtentRemover
+  struct RemoveExtent
   {
     using Type = T;
   };
 
   template <typename T, Size i>
-  struct ExtentRemover<T[i]>
+  struct RemoveExtent<T[i]>
   {
     using Type = T;
   };
 
   template <typename T>
-  struct ExtentRemover<T[]>
+  struct RemoveExtent<T[]>
   {
     using Type = T;
   };
 
-  export template <typename T>
-  using removeExtent = ExtentRemover<T>::Type;
+  export template <typename Type>
+  using removeExtent = RemoveExtent<Type>::Type;
 
   export template <typename T>
-  struct AllExtentsRemover
+  struct RemoveAllExtents
   {
     using Type = T;
   };
 
   template <typename T, Size i>
-  struct AllExtentsRemover<T[i]>
+  struct RemoveAllExtents<T[i]>
   {
-    using Type = AllExtentsRemover<T>::Type;
+    using Type = RemoveAllExtents<T>::Type;
   };
 
   template <typename T>
-  struct AllExtentsRemover<T[]>
+  struct RemoveAllExtents<T[]>
   {
-    using Type = AllExtentsRemover<T>::Type;
+    using Type = RemoveAllExtents<T>::Type;
   };
+
+  export template <typename Type>
+  using removeAllExtents = RemoveAllExtents<Type>::Type;
 
   export template <typename T>
-  using removeAllExtents = AllExtentsRemover<T>::Type;
-
-  export template <typename T>
-  struct PointerRemover
+  struct RemovePointer
   {
     using Type = T;
   };
 
   template <typename T>
-  struct PointerRemover<T*>
+  struct RemovePointer<T*>
   {
     using Type = T;
   };
 
   template <typename T>
-  struct PointerRemover<T* const>
+  struct RemovePointer<T* const>
   {
     using Type = T;
   };
 
   template <typename T>
-  struct PointerRemover<T* volatile>
+  struct RemovePointer<T* volatile>
   {
     using Type = T;
   };
 
   template <typename T>
-  struct PointerRemover<T* const volatile>
+  struct RemovePointer<T* const volatile>
   {
     using Type = T;
   };
 
-  export template <typename T>
-  using removePointer = PointerRemover<T>::Type;
+  export template <typename Type>
+  using removePointer = RemovePointer<Type>::Type;
 
   template <typename T, typename = Void>
-  struct PointerAdded
+  struct AddPointer
   {
     using Type = T;
   };
 
   template <typename T>
-  struct PointerAdded<T, Vaild<removeR<T>*>>
+  struct AddPointer<T, Vaild<removeR<T>*>>
   {
     using Type = removeR<T>*;
   };
 
-  export template <typename T>
-  using addPointer = PointerAdded<T>::Type;
+  export template <typename Type>
+  using Pointer = AddPointer<Type>::Type;
 
   export template <typename>
   constexpr Bool isArray{false};
 
-  template <typename T, Size n>
-  constexpr Bool isArray<T[n]>{true};
+  template <typename Type, Size n>
+  constexpr Bool isArray<Type[n]>{true};
 
-  template <typename T>
-  constexpr Bool isArray<T[]>{true};
+  template <typename Type>
+  constexpr Bool isArray<Type[]>{true};
 
   export template <typename>
   constexpr Bool isBoundedArray{false};
 
-  template <typename T, Size n>
-  constexpr Bool isBoundedArray<T[n]>{true};
+  template <typename Type, Size n>
+  constexpr Bool isBoundedArray<Type[n]>{true};
 
   export template <typename>
   constexpr Bool isUnboundedArray{false};
 
-  template <typename T>
-  constexpr Bool isUnboundedArray<T[]>{true};
+  template <typename Type>
+  constexpr Bool isUnboundedArray<Type[]>{true};
 
   export template<typename>
   constexpr Bool isLvalueReference{false};
 
-  template<typename T>
-  constexpr Bool isLvalueReference<T&>{true};
+  template<typename Type>
+  constexpr Bool isLvalueReference<Type&>{true};
 
   export template<typename>
   constexpr Bool isRvalueReference{false};
 
-  template<typename T>
-  constexpr Bool isRvalueReference<T&&>{true};
+  template<typename Type>
+  constexpr Bool isRvalueReference<Type&&>{true};
 
   export template<typename>
   constexpr Bool isReference{false};
 
-  template<typename T>
-  constexpr Bool isReference<T&>{true};
+  template<typename Type>
+  constexpr Bool isReference<Type&>{true};
 
-  template<typename T>
-  constexpr Bool isReference<T&&>{true};
+  template<typename Type>
+  constexpr Bool isReference<Type&&>{true};
 
   export template<typename>
   constexpr Bool isPointer{false};
 
-  template<typename T>
-  constexpr Bool isPointer<T*>{true};
+  template<typename Type>
+  constexpr Bool isPointer<Type*>{true};
 
-  template<typename T>
-  constexpr Bool isPointer<T* const>{true};
+  template<typename Type>
+  constexpr Bool isPointer<Type* const>{true};
 
-  template<typename T>
-  constexpr Bool isPointer<T* volatile>{true};
+  template<typename Type>
+  constexpr Bool isPointer<Type* volatile>{true};
 
-  template<typename T>
-  constexpr Bool isPointer<T* const volatile>{true};
+  template<typename Type>
+  constexpr Bool isPointer<Type* const volatile>{true};
 
-  export template<typename T>
-  constexpr Bool isNullPointer{isSame<removeCV<T>, Nullptr>};
+  export template<typename Type>
+  constexpr Bool isNullptr{isSame<removeCV<Type>, Nullptr>};
 
-  export template <typename T>
-  constexpr Bool isUnion{__is_union(T)};
+  export template <typename Type>
+  constexpr Bool isUnion{__is_union(Type)};
 
-  export template <typename T>
-  constexpr Bool isClass{__is_class(T)};
+  export template <typename Type>
+  constexpr Bool isClass{__is_class(Type)};
 
-  export template <typename T>
-  constexpr Bool isFundamental{isArithmetic<T> || isVoid<T> || isNullPointer<T>};
+  export template <typename Type>
+  constexpr Bool isFundamental{isArithmetic<Type> || isVoid<Type> || isNullptr<Type>};
 
   export template <typename From, typename To>
   constexpr Bool isConvertible{__is_convertible_to(From, To)};
 
-  export template <typename T>
-  constexpr Bool isEnum{__is_enum(T)};
+  export template <typename Type>
+  constexpr Bool isEnum{__is_enum(Type)};
 
-  export template <typename T>
-  constexpr Bool isScopedEnum{allTrue<isEnum<T>, !isConvertible<T, int>>};
+  export template <typename Type>
+  constexpr Bool isScopedEnum{allTrue<isEnum<Type>, !isConvertible<Type, Int>>};
 
-  export template <typename T>
-  constexpr Bool isCompound{!isFundamental<T>};
+  export template <typename Type>
+  constexpr Bool isCompound{!isFundamental<Type>};
 
   export template <typename>
   constexpr Bool isConst{false};
 
-  template <typename T>
-  constexpr Bool isConst<const T>{true};
+  template <typename Type>
+  constexpr Bool isConst<const Type>{true};
 
   export template <typename>
   constexpr Bool isVolatile{false};
 
-  template <typename T>
-  constexpr Bool isVolatile<volatile T>{true};
+  template <typename Type>
+  constexpr Bool isVolatile<volatile Type>{true};
 
-  export template <typename T>
-  constexpr Bool isFunction{!isConst<const T> && !isReference<T>};
+  export template <typename Type>
+  constexpr Bool isFunction{!isConst<const Type> && !isReference<Type>};
 
-  export template <typename T>
-  constexpr Bool isObject{isConst<const T> && !isVoid<T>};
+  export template <typename Type>
+  constexpr Bool isObject{isConst<const Type> && !isVoid<Type>};
 
-  template<typename T>
+  template<typename Type>
   struct MemberPointer: False {};
 
-  template<typename T, typename C>
-  struct MemberPointer<T C::*>: True {};
+  template<typename Type, typename Class>
+  struct MemberPointer<Type Class::*>: True {};
 
-  export template <typename T>
-  constexpr Bool isMemberPointer{MemberPointer<removeCV<T>>::value};
+  export template <typename Type>
+  constexpr Bool isMemberPointer{MemberPointer<removeCV<Type>>::value};
 
-  export template <typename T>
-  constexpr Bool isMemberFunctionPointer{isMemberPointer<T> && isFunction<removeCV<T>>};
+  export template <typename Type>
+  constexpr Bool isMemberFunctionPointer{isMemberPointer<Type> && isFunction<removeCV<Type>>};
 
-  export template <typename T>
-  constexpr Bool isMemberObjectPointer{isMemberPointer<T> && !isFunction<removeCV<T>>};
+  export template <typename Type>
+  constexpr Bool isMemberObjectPointer{isMemberPointer<Type> && !isFunction<removeCV<Type>>};
 
-  export template <typename T>
-  constexpr Bool isScalar{isArithmetic<T> || isEnum<T> || isPointer<T> || isMemberPointer<T> || isNullPointer<T>};
+  export template <typename Type>
+  constexpr Bool isScalar{isArithmetic<Type> || isEnum<Type> || isPointer<Type> || isMemberPointer<Type> || isNullptr<Type>};
 
-  export template <typename T>
-  constexpr Bool isEmpty{__is_empty(T)};
+  export template <typename Type>
+  constexpr Bool isEmpty{__is_empty(Type)};
 
-  export template <typename T>
-  constexpr Bool isPolymorphic{__is_polymorphic(T)};
+  export template <typename Type>
+  constexpr Bool isPolymorphic{__is_polymorphic(Type)};
 
-  export template <typename T>
-  constexpr Bool isAbstract{__is_abstract(T)};
+  export template <typename Type>
+  constexpr Bool isAbstract{__is_abstract(Type)};
 
-  export template <typename T>
-  constexpr Bool isFinal{__is_final(T)};
+  export template <typename Type>
+  constexpr Bool isFinal{__is_final(Type)};
 
-  export template <typename T>
-  constexpr Bool isStandardLayout{__is_standard_layout(T)};
+  export template <typename Type>
+  constexpr Bool isStandardLayout{__is_standard_layout(Type)};
 
-  export template <typename T>
-  constexpr Bool isTrivial{__is_trivial(T)};
+  export template <typename Type>
+  constexpr Bool isTrivial{__is_trivial(Type)};
 
-  export template <typename T>
-  constexpr Bool isTriviallyCopyable{__is_trivially_copyable(T)};
+  export template <typename Type>
+  constexpr Bool isTriviallyCopyable{__is_trivially_copyable(Type)};
 
-  export template <typename T>
-  constexpr Bool hasVirtualDestructor{__has_virtual_destructor(T)};
+  export template <typename Type>
+  constexpr Bool hasVirtualDestructor{__has_virtual_destructor(Type)};
 
-  export template <typename T>
-  constexpr Bool hasUniqueObjectRepresentations{__has_unique_object_representations(T)};
+  export template <typename Type>
+  constexpr Bool hasUniqueObjectRepresentations{__has_unique_object_representations(Type)};
 
-  export template <typename T>
-  constexpr Bool isAggregate{isArray<T> || __is_aggregate(T)};
+  export template <typename Type>
+  constexpr Bool isAggregate{isArray<Type> || __is_aggregate(Type)};
 
-  export template <typename T, typename... Args>
-  constexpr Bool isConstructible{__is_constructible(T, Args...)};
+  export template <typename Type, typename... Args>
+  constexpr Bool isConstructible{__is_constructible(Type, Args...)};
 
-  export template <typename T>
-  constexpr Bool isCopyConstructible{__is_constructible(T, addLvalueReference<const T>)};
+  export template <typename Type>
+  constexpr Bool isCopyConstructible{__is_constructible(Type, lvalueReference<const Type>)};
 
-  export template <typename T>
-  constexpr Bool isDefaultConstructible{__is_constructible(T)};
+  export template <typename Type>
+  constexpr Bool isDefaultConstructible{__is_constructible(Type)};
 
-  template <typename T, typename = Void>
+  template <typename Type, typename = Void>
   struct ImplicitlyDefaultConstructible: False {};
 
-  template <typename T>
-  Void ImplicitlyDefaultConstruct(const T&);
+  template <typename Type>
+  Void ImplicitlyDefaultConstruct(const Type&);
 
-  template <typename T>
-  struct ImplicitlyDefaultConstructible<T, Vaild<decltype(ImplicitlyDefaultConstruct<T>({}))>>: True {};
+  template <typename Type>
+  struct ImplicitlyDefaultConstructible<Type, Vaild<decltype(ImplicitlyDefaultConstruct<Type>({}))>>: True {};
 
-  export template <typename T>
-  constexpr Bool isMoveConstructible{__is_constructible(T, T)};
+  export template <typename Type>
+  constexpr Bool isMoveConstructible{__is_constructible(Type, Type)};
 
   export template <typename To, typename From>
   constexpr Bool isAssignable{__is_assignable(To, From)};
@@ -488,80 +491,83 @@ constexpr bool isNonboolIntegral = isIntegral<T> && !isSame<removeCV<T>, Bool>;
   template <typename To, typename From>
   constexpr Bool isAssignableNoPreconditionCheck{isAssignable<To, From>};
 
-  export template <typename T>
-  constexpr Bool isCopyAssignable{__is_assignable(addLvalueReference<T>, addLvalueReference<const T>)};
+  export template <typename Type>
+  constexpr Bool isCopyAssignable{__is_assignable(lvalueReference<Type>, lvalueReference<const Type>)};
 
-  template <typename T>
-  constexpr Bool isCopyAssignableNoPreconditionCheck{isCopyAssignable<T>};
+  template <typename Type>
+  constexpr Bool isCopyAssignableNoPreconditionCheck{isCopyAssignable<Type>};
 
-  template <typename T>
-  constexpr Bool isCopyAssignableUnchecked{isCopyAssignable<T>};
+  template <typename Type>
+  constexpr Bool isCopyAssignableUnchecked{isCopyAssignable<Type>};
 
-  export template <typename T>
-  constexpr Bool isMoveAssignable{__is_assignable(addLvalueReference<T>, T)};
+  export template <typename Type>
+  constexpr Bool isMoveAssignable{__is_assignable(lvalueReference<Type>, Type)};
 
-  template <typename T>
-  constexpr Bool isMoveAssignableNoPreconditionCheck{isMoveAssignable<T>};
+  template <typename Type>
+  constexpr Bool isMoveAssignableNoPreconditionCheck{isMoveAssignable<Type>};
 
-  template <typename T>
-  constexpr Bool isMoveAssignableUnchecked{isMoveAssignable<T>};
+  template <typename Type>
+  constexpr Bool isMoveAssignableUnchecked{isMoveAssignable<Type>};
 
-  export template <typename T>
-  constexpr Bool isDestructible{__is_destructible(T)};
+  export template <typename Type>
+  constexpr Bool isDestructible{__is_destructible(Type)};
 
-  export template <typename T, typename... Args>
-  constexpr Bool isTriviallyConstructible{__is_trivially_constructible(T, Args...)};
+  export template <typename Type, typename... Args>
+  constexpr Bool isTriviallyConstructible{__is_trivially_constructible(Type, Args...)};
 
-  export template <typename T>
-  constexpr Bool isTriviallyCopyConstructible{__is_trivially_constructible(T, addLvalueReference<const T>)};
+  export template <typename Type>
+  constexpr Bool isTriviallyCopyConstructible{__is_trivially_constructible(Type, lvalueReference<const Type>)};
 
-  export template <typename T>
-  constexpr Bool isTriviallyDefaultConstructible{__is_trivially_constructible(T)};
+  export template <typename Type>
+  constexpr Bool isTriviallyDefaultConstructible{__is_trivially_constructible(Type)};
 
-  export template <typename T>
-  constexpr Bool isTriviallyMoveConstructible{__is_trivially_constructible(T, T)};
+  export template <typename Type>
+  constexpr Bool isTriviallyMoveConstructible{__is_trivially_constructible(Type, Type)};
 
   export template <typename To, typename From>
   constexpr Bool isTriviallyAssignable{__is_trivially_assignable(To, From)};
 
-  export template <typename T>
-  constexpr Bool isTriviallyCopyAssignable{__is_trivially_assignable(addLvalueReference<T>, addLvalueReference<const T>)};
+  export template <typename Type>
+  constexpr Bool isTriviallyCopyAssignable{__is_trivially_assignable(lvalueReference<Type>, lvalueReference<const Type>)};
 
-  export template <typename T>
-  constexpr Bool isTriviallyMoveAssignable{__is_trivially_assignable(addLvalueReference<T>, T)};
+  export template <typename Type>
+  constexpr Bool isTriviallyMoveAssignable{__is_trivially_assignable(lvalueReference<Type>, Type)};
 
-  export template <typename T>
-  constexpr Bool isTriviallyDestructible{__is_trivially_destructible(T)};
+  export template <typename Type>
+  constexpr Bool isTriviallyDestructible{__is_trivially_destructible(Type)};
 
-  export template <typename T, typename... Args>
-  constexpr Bool isNothrowConstructible{__is_nothrow_constructible(T, Args...)};
+  export template <typename Type, typename... Args>
+  constexpr Bool isNothrowConstructible{__is_nothrow_constructible(Type, Args...)};
 
-  export template <typename T>
-  constexpr Bool isNothrowCopyConstructible{__is_nothrow_constructible(T, addLvalueReference<const T>)};
+  export template <typename Type>
+  constexpr Bool isNothrowCopyConstructible{__is_nothrow_constructible(Type, lvalueReference<const Type>)};
 
-  export template <typename T>
-  constexpr Bool isNothrowDefaultConstructible{__is_nothrow_constructible(T)};
+  export template <typename Type>
+  constexpr Bool isNothrowDefaultConstructible{__is_nothrow_constructible(Type)};
 
-  export template <typename T>
-  constexpr Bool isNothrowMoveConstructible{__is_nothrow_constructible(T, T)};
+  export template <typename Type>
+  constexpr Bool isNothrowMoveConstructible{__is_nothrow_constructible(Type, Type)};
 
   export template <typename To, typename From>
   constexpr Bool isNothrowAssignable{__is_nothrow_assignable(To, From)};
 
-  export template <typename T>
-  constexpr Bool isNothrowCopyAssignable{__is_nothrow_assignable(addLvalueReference<T>, addLvalueReference<const T>)};
+  export template <typename Type>
+  constexpr Bool isNothrowCopyAssignable{__is_nothrow_assignable(lvalueReference<Type>, lvalueReference<const Type>)};
 
-  export template <typename T>
-  constexpr Bool isNothrowMoveAssignable{__is_nothrow_assignable(addLvalueReference<T>, T)};
+  export template <typename Type>
+  constexpr Bool isNothrowMoveAssignable{__is_nothrow_assignable(lvalueReference<Type>, Type)};
 
-  export template <typename T>
-  constexpr Bool isNothrowDestructible{__is_nothrow_destructible(T)};
+  export template <typename Type>
+  constexpr Bool isNothrowDestructible{__is_nothrow_destructible(Type)};
 
-  export template <typename T>
-  constexpr Bool isSigned{isIntegral<T> ? removeCV<T>{-1} < removeCV<T>{0} : isFloating<T>};
+  export template <typename Type>
+  constexpr Bool isSigned{isSignedIntegral<Type> || isFloating<Type>};
 
-  export template <typename T>
-  constexpr Bool isUnsigned{isIntegral<T> && removeCV<T>{0} < removeCV<T>{-1}};
+  export template <typename Type>
+  constexpr Bool isUnsigned{isUnsignedIntegral<Type>};
+
+  template <typename Type>
+  constexpr Bool isStandardUnsigned{isAnyOf<Type, UInt8, UInt16, UInt32, UInt64>};
 
   //**********************************************************************************************************************************************************************************************************************************
   template <Size>
@@ -587,40 +593,40 @@ constexpr bool isNonboolIntegral = isIntegral<T> && !isSame<removeCV<T>, Bool>;
     using _Apply = Int64;
   };
 
-  template <typename T>
-  using _Make_signed1 = _Make_signed2<sizeof(T)>::_Apply;
+  template <typename Type>
+  using _Make_signed1 = _Make_signed2<sizeof(Type)>::_Apply;
 
-  export template <typename T>
-  using makeSigned = ConstVolatileRemover<T>::template _Apply<_Make_signed1>; // isNonboolIntegral<T> || isEnum<T>
+  export template <typename Type>
+  using makeSigned = RemoveConstVolatile<Type>::template _Apply<_Make_signed1>; // isNonboolIntegral<T> || isEnum<T>
 
   template <Size>
   struct _Make_unsigned2;
 
   template <>
   struct _Make_unsigned2<1> {
-    using _Apply = Uint8;
+    using _Apply = UInt8;
   };
 
   template <>
   struct _Make_unsigned2<2> {
-    using _Apply = Uint16;
+    using _Apply = UInt16;
   };
 
   template <>
   struct _Make_unsigned2<4> {
-    using _Apply = Uint32;
+    using _Apply = UInt32;
   };
 
   template <>
   struct _Make_unsigned2<8> {
-    using _Apply = Uint64;
+    using _Apply = UInt64;
   };
 
   template <typename T>
   using _Make_unsigned1 = _Make_unsigned2<sizeof(T)>::_Apply;
 
   export template <typename T>
-  using makeUnsigned = ConstVolatileRemover<T>::template _Apply<_Make_unsigned1>; // isNonboolIntegral<T> || isEnum<T>
+  using makeUnsigned = RemoveConstVolatile<T>::template _Apply<_Make_unsigned1>; // isNonboolIntegral<T> || isEnum<T>
 
   export template <typename T>
   constexpr Size alignOf{alignof(T)};
@@ -645,49 +651,49 @@ constexpr bool isNonboolIntegral = isIntegral<T> && !isSame<removeCV<T>, Bool>;
   template <typename T>
   constexpr Size rank<T[]> = rank<T> + 1;
 
-  export template <typename T, Uint32 i = 0>
+  export template <typename T, UInt32 i = 0>
   constexpr Size extent = 0;
 
   template <typename T, Size n>
   constexpr Size extent<T[n], 0> = n;
 
-  template <typename T, Uint32 i, Size n>
+  template <typename T, UInt32 i, Size n>
   constexpr Size extent<T[n], i> = extent<T, i - 1>;
 
-  template <typename T, Uint32 i>
+  template <typename T, UInt32 i>
   constexpr Size extent<T[], i> = extent<T, i - 1>;
 
   export template <typename Base, typename Derived>
   constexpr Bool isBaseOf = __is_base_of(Base, Derived);
 
   export template <typename T, typename U = removeR<T>>
-  using decay = conditional<isArray<U>, addPointer<removeExtent<U>>, conditional<isFunction<U>, addPointer<U>, removeCV<U>>>;
+  using decay = conditional<isArray<U>, Pointer<removeExtent<U>>, conditional<isFunction<U>, Pointer<U>, removeCV<U>>>;
 
 
 
 
 
 
-template <typename T1, typename T2>
-using conditionalType = decltype(false ? declvalue<T1>() : declvalue<T2>());
+template <typename Type1, typename Type2>
+using conditionalType = decltype(false ? declvalue<Type1>() : declvalue<Type2>());
 
-template <typename T1, typename T2>
+template <typename Type1, typename Type2>
 struct ConstLvalueConditionalOperator {};
 
-template <typename T1, typename T2>
-  requires requires { typename conditionalType<const T1&, const T2&>; }
-struct ConstLvalueConditionalOperator<T1, T2>
+template <typename Type1, typename Type2>
+  requires requires { typename conditionalType<const Type1&, const Type2&>; }
+struct ConstLvalueConditionalOperator<Type1, Type2>
 {
-  using Type = removeCVR<conditionalType<const T1&, const T2&>>;
+  using Type = removeCVR<conditionalType<const Type1&, const Type2&>>;
 };
 
-template <typename T1, typename T2, typename = Void>
-struct DecayedConditionalOperator: ConstLvalueConditionalOperator<T1, T2> {};
+template <typename Type1, typename Type2, typename = Void>
+struct DecayedConditionalOperator: ConstLvalueConditionalOperator<Type1, Type2> {};
 
-template <typename T1, typename T2>
-struct DecayedConditionalOperator<T1, T2, Vaild<conditionalType<T1, T2>>>
+template <typename Type1, typename Type2>
+struct DecayedConditionalOperator<Type1, Type2, Vaild<conditionalType<Type1, Type2>>>
 {
-  using Type = decay<conditionalType<T1, T2>>;
+  using Type = decay<conditionalType<Type1, Type2>>;
 };
 
 export template <typename... T>
@@ -699,27 +705,27 @@ using commonType = CommonType<T...>::Type;
 template <>
 struct CommonType<> {};
 
-template <typename T1>
-struct CommonType<T1> : CommonType<T1, T1> {};
+template <typename Type1>
+struct CommonType<Type1> : CommonType<Type1, Type1> {};
 
-template <typename T1, typename T2, typename Decayed1 = decay<T1>, typename Decayed2 = decay<T2>>
+template <typename Type1, typename Type2, typename Decayed1 = decay<Type1>, typename Decayed2 = decay<Type2>>
 struct CommonType2 : CommonType<Decayed1, Decayed2> {};
 
-template <typename T1, typename T2>
-struct CommonType2<T1, T2, T1, T2> : DecayedConditionalOperator<T1, T2> {};
+template <typename Type1, typename Type2>
+struct CommonType2<Type1, Type2, Type1, Type2> : DecayedConditionalOperator<Type1, Type2> {};
 
-template <typename T1, typename T2>
-struct CommonType<T1, T2> : CommonType2<T1, T2> {};
+template <typename Type1, typename Type2>
+struct CommonType<Type1, Type2> : CommonType2<Type1, Type2> {};
 
-template <typename _Void, typename T1, typename T2, typename... Rest>
+template <typename _Void, typename Type1, typename Type2, typename... Rest>
 struct CommonType3 {};
 
-template <typename T1, typename T2, typename... Rest>
-struct CommonType3<Vaild<commonType<T1, T2>>, T1, T2, Rest...>
-  : CommonType<commonType<T1, T2>, Rest...> {};
+template <typename Type1, typename Type2, typename... Rest>
+struct CommonType3<Vaild<commonType<Type1, Type2>>, Type1, Type2, Rest...>
+  : CommonType<commonType<Type1, Type2>, Rest...> {};
 
-template <typename T1, typename T2, typename... Rest>
-struct CommonType<T1, T2, Rest...> : CommonType3<void, T1, T2, Rest...> {};
+template <typename Type1, typename Type2, typename... Rest>
+struct CommonType<Type1, Type2, Rest...> : CommonType3<void, Type1, Type2, Rest...> {};
 
 template <typename T>
 T returnsExactly() noexcept;
@@ -751,25 +757,25 @@ template <typename From, typename To>
 using _Copy_cv = // N4950 [meta.trans.other]/2.3
   _Copy_cv_impl<From>::template _Apply<To>;
 
-template <typename T1>
+template <typename Type1>
 struct _Add_qualifiers { // _Add_qualifiers<A>::template _Apply is XREF(A) from N4950 [meta.trans.other]/2.2
-  template <typename T2>
-  using _Apply = _Copy_cv<T1, T2>;
+  template <typename Type2>
+  using _Apply = _Copy_cv<Type1, Type2>;
 };
-template <typename T1>
-struct _Add_qualifiers<T1&> {
-  template <typename T2>
-  using _Apply = addLvalueReference<_Copy_cv<T1, T2>>;
+template <typename Type1>
+struct _Add_qualifiers<Type1&> {
+  template <typename Type2>
+  using _Apply = lvalueReference<_Copy_cv<Type1, Type2>>;
 };
-template <typename T1>
-struct _Add_qualifiers<T1&&> {
-  template <typename T2>
-  using _Apply = addRvalueReference<_Copy_cv<T1, T2>>;
+template <typename Type1>
+struct _Add_qualifiers<Type1&&> {
+  template <typename Type2>
+  using _Apply = rvalueReference<_Copy_cv<Type1, Type2>>;
 };
 
-template <typename T1, typename T2>
+template <typename Type1, typename Type2>
 using _Cond_res = // N4950 [meta.trans.other]/2.4
-  decltype(false ? returnsExactly<T1>() : returnsExactly<T2>());
+  decltype(false ? returnsExactly<Type1>() : returnsExactly<Type2>());
 
 export template <typename...>
 struct common_reference;
@@ -789,92 +795,92 @@ struct common_reference<T> {
 
 // N4950 [meta.trans.other]/5.3: "...if sizeof...(T) is two..."
 
-// N4950 [meta.trans.other]/5.3.4: "if commonType<T1, T2> is well-formed..."
+// N4950 [meta.trans.other]/5.3.4: "if commonType<Type1, Type2> is well-formed..."
 // N4950 [meta.trans.other]/5.3.5: "Otherwise, there shall be no member type."
-template <typename T1, typename T2>
-struct _Common_reference2C : CommonType<T1, T2> {};
+template <typename Type1, typename Type2>
+struct _Common_reference2C : CommonType<Type1, Type2> {};
 
-// N4950 [meta.trans.other]/5.3.3: "if COND_RES(T1, T2) is well-formed..."
-template <typename T1, typename T2>
-  requires requires { typename _Cond_res<T1, T2>; }
-struct _Common_reference2C<T1, T2> {
-  using type = _Cond_res<T1, T2>;
+// N4950 [meta.trans.other]/5.3.3: "if COND_RES(Type1, Type2) is well-formed..."
+template <typename Type1, typename Type2>
+  requires requires { typename _Cond_res<Type1, Type2>; }
+struct _Common_reference2C<Type1, Type2> {
+  using type = _Cond_res<Type1, Type2>;
 };
 
 // N4950 [meta.trans.other]/5.3.2: "if basic_common_reference<[...]>::type is well-formed..."
-template <typename T1, typename T2>
-using _Basic_specialization = basic_common_reference<removeCVR<T1>, removeCVR<T2>,
-  _Add_qualifiers<T1>::template _Apply, _Add_qualifiers<T2>::template _Apply>::type;
+template <typename Type1, typename Type2>
+using _Basic_specialization = basic_common_reference<removeCVR<Type1>, removeCVR<Type2>,
+  _Add_qualifiers<Type1>::template _Apply, _Add_qualifiers<Type2>::template _Apply>::type;
 
-template <typename T1, typename T2>
-struct _Common_reference2B : _Common_reference2C<T1, T2> {};
+template <typename Type1, typename Type2>
+struct _Common_reference2B : _Common_reference2C<Type1, Type2> {};
 
-template <typename T1, typename T2>
-  requires requires { typename _Basic_specialization<T1, T2>; }
-struct _Common_reference2B<T1, T2> {
-  using type = _Basic_specialization<T1, T2>;
+template <typename Type1, typename Type2>
+  requires requires { typename _Basic_specialization<Type1, Type2>; }
+struct _Common_reference2B<Type1, Type2> {
+  using type = _Basic_specialization<Type1, Type2>;
 };
 
-// N4950 [meta.trans.other]/5.3.1: "Let R be COMMON-REF(T1, T2). If T1 and T2 are reference types, R is well-formed, and
-// is_convertible_v<addPointer<T1>, addPointer<R>> && is_convertible_v<addPointer<T2>, addPointer<R>> is
+// N4950 [meta.trans.other]/5.3.1: "Let R be COMMON-REF(Type1, Type2). If Type1 and Type2 are reference types, R is well-formed, and
+// is_convertible_v<Pointer<Type1>, Pointer<R>> && is_convertible_v<Pointer<Type2>, Pointer<R>> is
 // true, then the member typedef type denotes R."
-template <typename T1, typename T2>
-struct _Common_reference2A : _Common_reference2B<T1, T2> {};
+template <typename Type1, typename Type2>
+struct _Common_reference2A : _Common_reference2B<Type1, Type2> {};
 
-template <typename T1, typename T2>
-requires isLvalueReference<_Cond_res<_Copy_cv<T1, T2>&, _Copy_cv<T2, T1>&>>
-using _LL_common_ref = _Cond_res<_Copy_cv<T1, T2>&, _Copy_cv<T2, T1>&>;
+template <typename Type1, typename Type2>
+requires isLvalueReference<_Cond_res<_Copy_cv<Type1, Type2>&, _Copy_cv<Type2, Type1>&>>
+using _LL_common_ref = _Cond_res<_Copy_cv<Type1, Type2>&, _Copy_cv<Type2, Type1>&>;
 
-template <typename T1, typename T2>
+template <typename Type1, typename Type2>
 struct _Common_reference2AX {};
 
-template <typename T1, typename T2>
-requires requires { typename _LL_common_ref<T1, T2>; }
-struct _Common_reference2AX<T1&, T2&> {
-  using type = _LL_common_ref<T1, T2>; // "both lvalues" case from N4950 [meta.trans.other]/2.5
+template <typename Type1, typename Type2>
+requires requires { typename _LL_common_ref<Type1, Type2>; }
+struct _Common_reference2AX<Type1&, Type2&> {
+  using type = _LL_common_ref<Type1, Type2>; // "both lvalues" case from N4950 [meta.trans.other]/2.5
 };
 
-template <typename T1, typename T2>
-  requires isConvertible<T1&&, _LL_common_ref<const T1, T2>>
-struct _Common_reference2AX<T1&&, T2&> {
-  using type = _LL_common_ref<const T1, T2>; // "rvalue and lvalue" case from N4950 [meta.trans.other]/2.7
+template <typename Type1, typename Type2>
+  requires isConvertible<Type1&&, _LL_common_ref<const Type1, Type2>>
+struct _Common_reference2AX<Type1&&, Type2&> {
+  using type = _LL_common_ref<const Type1, Type2>; // "rvalue and lvalue" case from N4950 [meta.trans.other]/2.7
 };
 
-template <typename T1, typename T2>
-  requires isConvertible<T2&&, _LL_common_ref<const T2, T1>>
-struct _Common_reference2AX<T1&, T2&&> {
-  using type = _LL_common_ref<const T2, T1>; // "lvalue and rvalue" case from N4950 [meta.trans.other]/2.8
+template <typename Type1, typename Type2>
+  requires isConvertible<Type2&&, _LL_common_ref<const Type2, Type1>>
+struct _Common_reference2AX<Type1&, Type2&&> {
+  using type = _LL_common_ref<const Type2, Type1>; // "lvalue and rvalue" case from N4950 [meta.trans.other]/2.8
 };
 
-template <typename T1, typename T2>
-using _RR_common_ref = removeR<_LL_common_ref<T1, T2>>&&;
+template <typename Type1, typename Type2>
+using _RR_common_ref = removeR<_LL_common_ref<Type1, Type2>>&&;
 
-template <typename T1, typename T2>
-  requires isConvertible<T1&&, _RR_common_ref<T1, T2>>
-        && isConvertible<T2&&, _RR_common_ref<T1, T2>>
-struct _Common_reference2AX<T1&&, T2&&> {
-  using type = _RR_common_ref<T1, T2>; // "both rvalues" case from N4950 [meta.trans.other]/2.6
+template <typename Type1, typename Type2>
+  requires isConvertible<Type1&&, _RR_common_ref<Type1, Type2>>
+        && isConvertible<Type2&&, _RR_common_ref<Type1, Type2>>
+struct _Common_reference2AX<Type1&&, Type2&&> {
+  using type = _RR_common_ref<Type1, Type2>; // "both rvalues" case from N4950 [meta.trans.other]/2.6
 };
 
-template <typename T1, typename T2>
-using _Common_ref_2AX_t = _Common_reference2AX<T1, T2>::type;
+template <typename Type1, typename Type2>
+using _Common_ref_2AX_t = _Common_reference2AX<Type1, Type2>::type;
 
-template <typename T1, typename T2>
-  requires isConvertible<addPointer<T1>, addPointer<_Common_ref_2AX_t<T1, T2>>>
-        && isConvertible<addPointer<T2>, addPointer<_Common_ref_2AX_t<T1, T2>>>
-struct _Common_reference2A<T1, T2> {
-  using type = _Common_ref_2AX_t<T1, T2>;
+template <typename Type1, typename Type2>
+  requires isConvertible<Pointer<Type1>, Pointer<_Common_ref_2AX_t<Type1, Type2>>>
+        && isConvertible<Pointer<Type2>, Pointer<_Common_ref_2AX_t<Type1, Type2>>>
+struct _Common_reference2A<Type1, Type2> {
+  using type = _Common_ref_2AX_t<Type1, Type2>;
 };
 
-template <typename T1, typename T2>
-struct common_reference<T1, T2> : _Common_reference2A<T1, T2> {};
+template <typename Type1, typename Type2>
+struct common_reference<Type1, Type2> : _Common_reference2A<Type1, Type2> {};
 
 // N4950 [meta.trans.other]/5.4: "if sizeof...(T) is greater than two..."
-template <typename T1, typename T2, typename T3, typename... Rest>
-struct common_reference<T1, T2, T3, Rest...> {};
-template <typename T1, typename T2, typename T3, typename... Rest>
-  requires requires { typename common_reference_t<T1, T2>; }
-struct common_reference<T1, T2, T3, Rest...> : common_reference<common_reference_t<T1, T2>, T3, Rest...> {
+template <typename Type1, typename Type2, typename T3, typename... Rest>
+struct common_reference<Type1, Type2, T3, Rest...> {};
+template <typename Type1, typename Type2, typename T3, typename... Rest>
+  requires requires { typename common_reference_t<Type1, Type2>; }
+struct common_reference<Type1, Type2, T3, Rest...> : common_reference<common_reference_t<Type1, Type2>, T3, Rest...> {
 };
 
 export template <typename T>
@@ -885,4 +891,15 @@ export template <typename T>
 using type_identity_t = type_identity<T>::type;
 
 //1625
+
+export template <typename Type>
+[[nodiscard]] constexpr Type&& forward(removeR<Type>& value) noexcept {//lvalue(Type)
+  return static_cast<Type&&>(value);
+}
+
+export template <typename Type>
+[[nodiscard]] constexpr removeR<Type>&& move(Type&& value) noexcept {
+  return (removeR<Type>&&)value;
+}
+
 }

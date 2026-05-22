@@ -16,12 +16,12 @@ import <stdlib.h>;
 
 #define round(i0, i1, i2, i3, i4, i5, i6, i7, k, w) temp1(i3, i4, i5, i6, i7, k, w); temp2(i0, i1, i2, i7)
 
-#define convertLittleToBig(i) (w[i] = Atl::convertEndian(chunk[i]))
+#define convertLittleToBig(i) (w[i] = Atl::swapByte(chunk[i]))
 #define extend(i0, i1, i2, i) (w[i] += s0(i0) + w[i1] + s1(i2))
 
-static constexpr Atl::Void process(Atl::Uint32 digest[8], const Atl::Uint32 chunk[16]) noexcept
+static constexpr Atl::Void process(Atl::UInt32 digest[8], const Atl::UInt32 chunk[16]) noexcept
 {
-  Atl::Uint32 h[8], w[16];
+  Atl::UInt32 h[8], w[16];
   Atl::copy(digest, 8, h);
   round(0, 1, 2, 3, 4, 5, 6, 7, 0x428a2f98, convertLittleToBig( 0));
   round(7, 0, 1, 2, 3, 4, 5, 6, 0x71374491, convertLittleToBig( 1));
@@ -94,38 +94,36 @@ static constexpr Atl::Void process(Atl::Uint32 digest[8], const Atl::Uint32 chun
 }
 
 template<>
-const Atl::SHA256& Atl::SHA256::operator()(const Byte* data, Size size) noexcept
+constexpr Atl::UInt32 Atl::SHA256::initValue[8]{
+  0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+};
+
+template<>
+const Atl::SHA256& Atl::SHA256::operator()(const UInt8* data, Size size) noexcept
 {
-  data_[0] = 0x6a09e667;
-  data_[1] = 0xbb67ae85;
-  data_[2] = 0x3c6ef372;
-  data_[3] = 0xa54ff53a;
-  data_[4] = 0x510e527f;
-  data_[5] = 0x9b05688c;
-  data_[6] = 0x1f83d9ab;
-  data_[7] = 0x5be0cd19;
-  Byte buffer[64];
+  init();
+  UInt8 buffer[64];
   Size counter{size & 0x3f};
-  if (data && size) {
-    const Byte* i{data};
-    for (const Byte* end{data + size - 64}; i <= end; i += 64) {
-      [[msvc::forceinline]] process(data_, (Uint32*)i);
+  if (data && size) [[likely]] {
+    const UInt8* i{data};
+    for (const UInt8* end{data + size - 64}; i <= end; i += 64) {
+      [[msvc::forceinline]] process(data_, (UInt32*)i);
     }
     copy(i, counter, buffer);
   }
   buffer[counter] = 0x80;
-  if (++counter <= 56) {
+  if (++counter <= 56) [[likely]] {
     fill(buffer + counter, 56 - counter, 0);
-  } else {
+  } else [[unlikely]] {
     fill(buffer + counter, 64 - counter, 0);
-    process(data_, (Uint32*)buffer);
+    process(data_, (UInt32*)buffer);
     fill(buffer, 56, 0);
   }
-  ((Size*)buffer)[7] = convertEndian64(size << 3);
-  process(data_, (Uint32*)buffer);
+  ((Size*)buffer)[7] = swapByte(size << 3);
+  process(data_, (UInt32*)buffer);
   for (Int i{0}; i < 8; ++i)
   {
-    data_[i] = convertEndian(data_[i]);
+    data_[i] = swapByte(data_[i]);
   }
   return *this;
 }

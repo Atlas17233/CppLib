@@ -4,16 +4,16 @@ import :Def;
 
 namespace Atl
 {
-  /*template<typename T, Size size_>
+  /*template<typename Type, Size size_>
   class ConstArrayIterator
   {
   public:
     constexpr ConstArrayIterator() noexcept {}
-    constexpr explicit ConstArrayIterator(const T* ptr) noexcept: _ptr{ptr} {}
+    constexpr explicit ConstArrayIterator(const Type* ptr) noexcept: _ptr{ptr} {}
 
-    [[nodiscard]] constexpr const T& operator*() const noexcept { return *_ptr; }
-    [[nodiscard]] constexpr const T* operator->() const noexcept { return _ptr; }
-    [[nodiscard]] constexpr const T& operator[](Size offset) const noexcept { return _ptr[offset]; }
+    [[nodiscard]] constexpr const Type& operator*() const noexcept { return *_ptr; }
+    [[nodiscard]] constexpr const Type* operator->() const noexcept { return _ptr; }
+    [[nodiscard]] constexpr const Type& operator[](Size offset) const noexcept { return _ptr[offset]; }
     constexpr ConstArrayIterator& operator++() noexcept { ++_ptr; return *this; }
     constexpr ConstArrayIterator& operator--() noexcept { --_ptr; return *this; }
     constexpr ConstArrayIterator operator++(int) noexcept { ConstArrayIterator tmp{_ptr}; ++_ptr; return tmp; }
@@ -27,20 +27,20 @@ namespace Atl
     [[nodiscard]] constexpr bool operator==(const ConstArrayIterator& iter) const noexcept { return _ptr == iter._ptr; }
     //[[nodiscard]] constexpr strong_ordering operator<=>(const ConstArrayIterator& iter) const noexcept { return _ptr <=> iter._ptr; }
   private:
-    const T* _ptr;
+    const Type* _ptr;
   };
 
-  template<typename T, Size size_>
+  template<typename Type, Size size_>
   class ArrayIterator
   {
   public:
     constexpr ArrayIterator() noexcept {}
-    constexpr explicit ArrayIterator(T* ptr) noexcept: ArrayIterator<T, size_>{ptr} {}
+    constexpr explicit ArrayIterator(Type* ptr) noexcept: ArrayIterator<Type, size_>{ptr} {}
 
-    [[nodiscard]] constexpr T& operator*() const noexcept { return *_ptr; }
-    [[nodiscard]] constexpr T* operator->() const noexcept { return _ptr; }
-    [[nodiscard]] constexpr T& operator[](Size offset) const noexcept { return _ptr[offset]; }
-    //[[nodiscard]] constexpr const T& operator[](Size offset) const noexcept { return _ptr[offset]; }
+    [[nodiscard]] constexpr Type& operator*() const noexcept { return *_ptr; }
+    [[nodiscard]] constexpr Type* operator->() const noexcept { return _ptr; }
+    [[nodiscard]] constexpr Type& operator[](Size offset) const noexcept { return _ptr[offset]; }
+    //[[nodiscard]] constexpr const Type& operator[](Size offset) const noexcept { return _ptr[offset]; }
     constexpr ArrayIterator& operator++() noexcept { ++_ptr; return *this; }
     constexpr ArrayIterator& operator--() noexcept { --_ptr; return *this; }
     constexpr ArrayIterator operator++(int) noexcept { ArrayIterator tmp{_ptr}; ++_ptr; return tmp; }
@@ -54,40 +54,38 @@ namespace Atl
     [[nodiscard]] constexpr bool operator==(const ArrayIterator& iter) const noexcept { return _ptr == iter._ptr; }
     //[[nodiscard]] constexpr strong_ordering operator<=>(const ArrayIterator& iter) const noexcept { return _ptr <=> iter._ptr; }
   private:
-    T* _ptr;
+    Type* _ptr;
   };
 */
   export
   {
-    template<typename T, Size size_>
-    requires(size_ > 0)
+    template <typename Type, Size size_> requires(size_ > 0)
     class Array
     {
     public:
-      //constexpr void fill(const T& value) noexcept { fill(data_, size_, value); }
+      //constexpr void fill(const Type& value) noexcept { fill(data_, size_, value); }
       //consteval void swap(Array& array) noexcept;
 
-      [[nodiscard]] consteval const T* begin() const noexcept { return data_; }
-      [[nodiscard]] consteval T* begin() noexcept { return data_; }
+      [[nodiscard]] constexpr const Type* begin() const noexcept { return data_; }
+      [[nodiscard]] constexpr Type* begin() noexcept { return data_; }
 
-      [[nodiscard]] consteval const T* end() const noexcept { return data_ + size_; }
-      [[nodiscard]] consteval T* end() noexcept { return data_ + size_; }
+      [[nodiscard]] constexpr const Type* end() const noexcept { return data_ + size_; }
+      [[nodiscard]] constexpr Type* end() noexcept { return data_ + size_; }
 
       [[nodiscard]] consteval Bool empty() const noexcept { return false; }
       [[nodiscard]] consteval Size size() const noexcept { return size_; }
-      //[[nodiscard]] consteval Size maxSize() const noexcept { return size_; }
 
-      [[nodiscard]] consteval const T& operator[](Size i) const noexcept { return data_[i]; }
-      [[nodiscard]] consteval T& operator[](Size i) noexcept { return data_[i]; }
-      [[nodiscard]] consteval const T& front() const noexcept { return data_[0]; }
-      [[nodiscard]] consteval T& front() noexcept { return data_[0]; }
-      [[nodiscard]] consteval const T& back() const noexcept { return data_[size_ - 1]; }
-      [[nodiscard]] consteval T& back() noexcept { return data_[size_ - 1]; }
-      [[nodiscard]] consteval const T* data() const noexcept { return data_; }
-      [[nodiscard]] consteval T* data() noexcept { return data_; }
+      [[nodiscard]] constexpr const Type& operator[](Size i) const noexcept { return data_[i]; }
+      [[nodiscard]] constexpr Type& operator[](Size i) noexcept { return data_[i]; }
+      [[nodiscard]] constexpr const Type& front() const noexcept { return data_[0]; }
+      [[nodiscard]] constexpr Type& front() noexcept { return data_[0]; }
+      [[nodiscard]] constexpr const Type& back() const noexcept { return data_[size_ - 1]; }
+      [[nodiscard]] constexpr Type& back() noexcept { return data_[size_ - 1]; }
+      [[nodiscard]] constexpr const Type* data() const noexcept { return data_; }
+      [[nodiscard]] constexpr Type* data() noexcept { return data_; }
 
     protected:
-      T data_[size_];
+      Type data_[size_];
     };
   }
 }

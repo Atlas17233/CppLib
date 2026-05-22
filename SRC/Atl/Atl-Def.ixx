@@ -17,10 +17,10 @@ namespace Atl
     using Int32 = int;
     using Int64 = long long;
 
-    using Uint8 = unsigned char;
-    using Uint16 = unsigned short;
-    using Uint32 = unsigned int;
-    using Uint64 = unsigned long long;
+    using UInt8 = unsigned char;
+    using UInt16 = unsigned short;
+    using UInt32 = unsigned int;
+    using UInt64 = unsigned long long;
 
     using Char = char;
     using CharW = wchar_t;
@@ -31,33 +31,75 @@ namespace Atl
     using Float = float;
     using Double = double;
 
-    using Byte = Uint8;
 
     using Int = Int32;
 
-    using diffPtr = Int64;
+    using DiffPtr = Int64;
 
-    using Size = Uint64;
+    using Size = UInt64;
     constexpr Size KiB{0x400};
     constexpr Size MiB{0x100000};
     constexpr Size GiB{0x40000000};
+    constexpr Size TiB{0x10000000000};
+    constexpr Size PiB{0x4000000000000};
+    constexpr Size EiB{0x1000000000000000};
 
-    template<typename T>
-    class Data
+    template <typename Type, typename SizeType = Size>
+    struct Data
+    {
+      Type* data_;
+      SizeType size_;
+    };
+
+    template <typename Type, typename SizeType = Size>
+    class DataClass: protected Data<Type, SizeType>
     {
     public:
-      constexpr Data(T* data, Size size) noexcept: data_{data}, size_{size} {}
+      constexpr DataClass(Type* data, SizeType size) noexcept: Data<Type, SizeType>{data, size} {}
 
-      constexpr Void data(T* data) noexcept { data_ = data; }
-      constexpr T* data() const noexcept { return data_; }
-      constexpr Void size(Size size) noexcept { size_ = size; }
-      constexpr Size size() const noexcept { return size_; }
+      constexpr Type* data() const noexcept { return Data<Type, SizeType>::data_; }
+      constexpr SizeType size() const noexcept { return Data<Type, SizeType>::size_; }
+    };
 
-    protected:
-      T* data_;
-      Size size_;
+    template <typename Type1, typename Type2 = Type1>
+    struct Pair
+    {
+      Type1 l;
+      Type2 r;
     };
   }
 
-  extern "C" Atl::Size strlen(const Atl::Char* str);
+  using Long = long;
+  using ULong = unsigned long;
+
+  extern "C" {
+    UInt16 __lzcnt16(UInt16);
+    UInt32 __lzcnt(UInt32);
+    UInt64 __lzcnt64(UInt64);
+
+    Void*    memset(Void*, Int, Size);
+    Void*    memcpy(Void*, const Void*, Size);
+
+    UInt8   _rotl8(UInt8, UInt8);
+    UInt16  _rotl16(UInt16, UInt8);
+    UInt32  _rotl(UInt32, Int32);
+    UInt64  _rotl64(UInt64, Int32);
+
+    UInt8   _rotr8(UInt8, UInt8);
+    UInt16  _rotr16(UInt16, UInt8);
+    UInt32  _rotr(UInt32, Int32);
+    UInt64  _rotr64(UInt64, Int32);
+
+    Size     strlen(const Char*);
+
+    UInt32  _tzcnt_u32(UInt32);
+    UInt64  _tzcnt_u64(UInt64);
+  }
+
+  consteval UInt64 operator"" _KiB(UInt64 n) { return n * KiB; }
+  consteval UInt64 operator"" _MiB(UInt64 n) { return n * MiB; }
+  consteval UInt64 operator"" _GiB(UInt64 n) { return n * GiB; }
+  consteval UInt64 operator"" _TiB(UInt64 n) { return n * TiB; }
+  consteval UInt64 operator"" _PiB(UInt64 n) { return n * PiB; }
+  consteval UInt64 operator"" _EiB(UInt64 n) { return n * EiB; }
 }

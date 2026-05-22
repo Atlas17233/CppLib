@@ -6,16 +6,16 @@ namespace Atl
 {
   export
   {
-    template<typename T>
-    [[nodiscard]] constexpr const T& min(const T& l, const T& r) noexcept
+    template<typename Type>
+    [[msvc::forceinline]] [[nodiscard]] constexpr const Type& min(const Type& left, const Type& right) noexcept
     {
-      return std::min(l, r);
+      return left < right ? left : right;
     }
 
-    template<typename T>
-    [[nodiscard]] constexpr const T& max(const T& l, const T& r) noexcept
+    template<typename Type>
+    [[msvc::forceinline]] [[nodiscard]] constexpr const Type& max(const Type& left, const Type& right) noexcept
     {
-      return std::max(l, r);
+      return left > right ? left : right;
     }
   }
 }

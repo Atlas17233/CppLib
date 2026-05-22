@@ -1,6 +1,6 @@
 export module Atl:Exception;
 
-import std;
+import :Def;
 
 namespace Atl
 {

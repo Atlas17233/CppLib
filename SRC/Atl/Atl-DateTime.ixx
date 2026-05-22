@@ -1,6 +1,6 @@
 export module Atl:DateTime;
 
-import std;
+import :Def;
 
 namespace Atl
 {

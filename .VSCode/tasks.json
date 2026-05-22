@@ -25,7 +25,8 @@
         "--config", "Debug",
         "&&",
         "Scripts\\ifc.bat",
-        "${workspaceFolderBasename}"
+        "${workspaceFolderBasename}",
+        "Debug"
       ],
       "problemMatcher": ["$msCompile"],
       "group": "build"
@@ -42,7 +43,8 @@
         "--config", "RelWithDebInfo",
         "&&",
         "Scripts\\ifc.bat",
-        "${workspaceFolderBasename}"
+        "${workspaceFolderBasename}",
+        "RelWithDebInfo"
       ],
       "problemMatcher": ["$msCompile"],
       "group": "build"

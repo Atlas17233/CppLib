@@ -1,9 +1,9 @@
-module;
-#include <windows.h>
 export module Atl:File;
 
 import :Def;
 import :String;
+
+import <windows.h>;
 
 namespace Atl
 {
@@ -40,7 +40,7 @@ namespace Atl
         }
       }
 
-      constexpr operator ConstString() const noexcept { return ConstString{(const Char*)data(), size()}; }
+      constexpr operator ConstString() const noexcept { return ConstString{(const Char*)data_, size_}; }
 
     private:
       HANDLE file_;

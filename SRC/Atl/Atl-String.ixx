@@ -1,7 +1,6 @@
 export module Atl:String;
 
 import :Algorithm;
-import :Array;
 import :Def;
 import :Type;
 
@@ -11,7 +10,7 @@ namespace Atl
   {
     [[nodiscard]] constexpr Size getSize(const Char* str) noexcept
     {
-      if (!isConstEval()) {
+      if !consteval {
         return strlen(str);
       } else {
         const Char* end = str;
@@ -20,10 +19,10 @@ namespace Atl
       }
     }
 
-    class ConstString final: public Data<const Char>
+    class ConstString final: public DataClass<const Char>
     {
     public:
-      constexpr ConstString(const Char* str, Size size) noexcept: Data<const Char>{str, size} {}
+      constexpr ConstString(const Char* str, Size size) noexcept: DataClass<const Char>{str, size} {}
       constexpr ConstString(const Char* str) noexcept: ConstString{str, getSize(str)} {}
     };
 

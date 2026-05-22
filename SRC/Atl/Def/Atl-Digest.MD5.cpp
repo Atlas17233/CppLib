@@ -9,9 +9,9 @@ import :Digest;
 
 #define round(F, i0, i1, i2, i3, k, i, s) h[i0] = h[i1] + Atl::rotL(h[i0] + F(i1, i2, i3) + k + m[i], s)
 
-static constexpr Atl::Void process(Atl::Uint32 digest[4], const Atl::Uint32 m[16]) noexcept
+static constexpr Atl::Void process(Atl::UInt32 digest[4], const Atl::UInt32 m[16]) noexcept
 {
-  Atl::Uint32 h[4];
+  Atl::UInt32 h[4];
   Atl::copy(digest, 4, h);
   round(F1, 0, 1, 2, 3, 0xd76aa478,  0,  7);
   round(F1, 3, 0, 1, 2, 0xe8c7b756,  1, 12);
@@ -84,30 +84,30 @@ static constexpr Atl::Void process(Atl::Uint32 digest[4], const Atl::Uint32 m[16
 }
 
 template<>
-const Atl::MD5& Atl::MD5::operator()(const Byte* data, Size size) noexcept
+constexpr Atl::UInt32 Atl::MD5::initValue[4]{0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476};
+
+template<>
+const Atl::MD5& Atl::MD5::operator()(const UInt8* data, Size size) noexcept
 {
-  data_[0] = 0x67452301;
-  data_[1] = 0xefcdab89;
-  data_[2] = 0x98badcfe;
-  data_[3] = 0x10325476;
-  Byte buffer[64];
+  init();
+  UInt8 buffer[64];
   Size counter{size & 0x3f};
-  if (data && size) {
-    const Byte* i{data};
-    for (const Byte* end{data + size - 64}; i <= end; i += 64) {
-      [[msvc::forceinline]] process(data_, (Uint32*)i);
+  if (data && size) [[likely]] {
+    const UInt8* i{data};
+    for (const UInt8* end{data + size - 64}; i <= end; i += 64) {
+      [[msvc::forceinline]] process(data_, (UInt32*)i);
     }
     copy(i, counter, buffer);
   }
   buffer[counter] = 0x80;
-  if (++counter <= 56) {
+  if (++counter <= 56) [[likely]] {
     fill(buffer + counter, 56 - counter, 0);
-  } else {
+  } else [[unlikely]] {
     fill(buffer + counter, 64 - counter, 0);
-    process(data_, (Uint32*)buffer);
+    process(data_, (UInt32*)buffer);
     fill(buffer, 56, 0);
   }
   ((Size*)buffer)[7] = (size << 3);
-  process(data_, (Uint32*)buffer);
+  process(data_, (UInt32*)buffer);
   return *this;
 }
