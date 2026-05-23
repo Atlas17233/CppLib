@@ -60,13 +60,6 @@ namespace Atl
       constexpr Type* data() const noexcept { return Data<Type, SizeType>::data_; }
       constexpr SizeType size() const noexcept { return Data<Type, SizeType>::size_; }
     };
-
-    template <typename Type1, typename Type2 = Type1>
-    struct Pair
-    {
-      Type1 l;
-      Type2 r;
-    };
   }
 
   using Long = long;
