@@ -22,20 +22,20 @@ namespace Atl
 
     class Chunk
     {
-    public:
       struct alignas(0x10) Node
       {
         UInt16 pL;
         UInt16 pR;
         UInt16 index;
         UInt16 size;
+        UInt8 pKey;
+        UInt8 pPriority;
         union {
           UInt16 cPriority;
           UInt8 pagePriority;
         };
         UInt16 cL;
         UInt16 cR;
-        UInt8 pPriority;
 
         static constexpr UInt8 priority[0x100]
         {
@@ -63,30 +63,36 @@ namespace Atl
           pR = 0;
           index = i;
           size = s;
-          if (s > 1 && i + s < 0x10000) [[likely]] {
-            this[s - 1].index = i;
-          }
+          pKey = s <= 0xff ? s : 0xff;
+          pPriority = _tzcnt_u32(pKey);
           cPriority = i;
           pagePriority = priority[i & 0xff];
           cL = 0;
           cR = 0;
-          pPriority = _tzcnt_u32(min(s, 0xffui16));
+          if (s > 1 && i + s < 0x10000) {
+            this[s - 1].index = i;
+            this[s - 1].size = s;
+            this[s - 1].pKey = pKey;
+          }
         }
 
         Void resize(UInt16 s) noexcept
         {
-          size += s;
-          if (size > 1 && index + size < 0x10000) [[likely]] {
-            this[size - 1].index = index;
+          size = s;
+          pKey = s <= 0xff ? s : 0xff;
+          pPriority = _tzcnt_u32(pKey);
+          if (s > 1 && index + s < 0x10000) {
+            this[s - 1].index = index;
+            this[s - 1].size = s;
+            this[s - 1].pKey = pKey;
           }
-          pPriority = _tzcnt_u32(min(size, 0xffui16));
         }
       };
 
       Chunk() noexcept: nodes_{(Node*)alloc<Node>(1_MiB)}
       {
-        nodes_->cPriority = 1;
-        nodes_->size = 0xffff;
+        ((Node**)nodes_)[1] = nodes_ + 1;
+        nodes_->size = 0xff;
         nodes_[1].init(1, 0xffff);
       }
 
@@ -102,15 +108,15 @@ namespace Atl
         Node* m;
         Node* r;
       };
-
-      SplitLR splitP2(UInt16 size)
+/*
+      [[nodiscard]] SplitLR splitP2(UInt8 pKey) noexcept
       {
-        Node* node{nodes_ + nodes_->cPriority};
+        Node* node{((Node**)nodes_)[1]};
         Node* l{nodes_};
         Node* r{nodes_};
         *(UInt32*)nodes_ = 0;
         while (node != nodes_) {
-          if (node->size < size) {
+          if (node->pKey < pKey) {
             l->pR = node->index;
             l = node;
             node = nodes_ + node->pR;
@@ -124,11 +130,11 @@ namespace Atl
         }
         return {nodes_ + nodes_->pR, nodes_ + nodes_->pL};
       }
-
-      SplitLR splitC2(Node* node, UInt16 index)
+*/
+      [[nodiscard]] SplitLR splitC2(Node* node, UInt16 index) noexcept
       {
-        Node* l = nodes_;
-        Node* r = nodes_;
+        Node* l{nodes_};
+        Node* r{nodes_};
         *(UInt32*)nodes_ = 0;
         while (node != nodes_) {
           if (node->index < index) {
@@ -143,25 +149,25 @@ namespace Atl
             r->cL = 0;
           }
         }
-        return {nodes_ + nodes_->cR, nodes_ + nodes_->cL};
+        return {nodes_ + nodes_->pR, nodes_ + nodes_->pL};
       }
 
-      SplitLMR splitP3(UInt16 size)
+      [[nodiscard]] SplitLMR splitP3(UInt8 pKey) noexcept
       {
-        Node* node{nodes_ + nodes_->cPriority};
+        Node* node{((Node**)nodes_)[1]};
         Node* l{nodes_};
         Node* m{nodes_};
         Node* r{nodes_};
         *(UInt32*)nodes_ = 0;
         while (node != nodes_) {
-          if (node->size == size) {
-            m = node;
+          if (node->pKey == pKey) {
             l->pR = node->pL;
             r->pL = node->pR;
-            m->pL = 0;
-            m->pR = 0;
+            node->pL = 0;
+            node->pR = 0;
+            m = node;
             break;
-          } else if (node->size < size) {
+          } else if (node->pKey < pKey) {
             l->pR = node->index;
             l = node;
             node = nodes_ + node->pR;
@@ -176,7 +182,7 @@ namespace Atl
         return {nodes_ + nodes_->pR, m, nodes_ + nodes_->pL};
       }
 
-      SplitLMR splitC3(Node* node, UInt16 index)
+      [[nodiscard]] SplitLMR splitC3(Node* node, UInt16 index) noexcept
       {
         Node* l{nodes_};
         Node* m{nodes_};
@@ -205,10 +211,8 @@ namespace Atl
         return {nodes_ + nodes_->pR, m, nodes_ + nodes_->pL};
       }
 
-      UInt16 mergeP2(Node* l, Node* r)
+      [[msvc::forceinline]] Void mergeP(Node* l, Node* r, UInt16* node) noexcept
       {
-        UInt16 root = 0;
-        UInt16* node = &root;
         while (l != nodes_ && r != nodes_) {
           if (l->pPriority > r->pPriority) {
             *node = l->index;
@@ -221,13 +225,54 @@ namespace Atl
           }
         }
         *node = l->index + r->index;
-        return root;
+        ((Node**)nodes_)[1] = nodes_ + nodes_->pL;
+      }
+/*
+      Void mergeP2(Node* l, Node* r) noexcept
+      {
+        mergeP(l, r, (UInt16*)nodes_);
+      }
+*/
+      Void mergeP3(Node* l, Node* m, Node* r) noexcept
+      {
+        UInt16* node{(UInt16*)nodes_};
+        if (m != nodes_) {
+          if (l != nodes_) {
+            if (r != nodes_) {
+              do {
+                if (l->pPriority > r->pPriority) {
+                  if (l->pPriority > m->pPriority) {
+                    *node = l->index;
+                    node = &l->pR;
+                    l = nodes_ + l->pR;
+                    continue;
+                  }
+                } else if(m->pPriority < r->pPriority) {
+                  *node = r->index;
+                  node = &r->pL;
+                  r = nodes_ + r->pL;
+                  continue;
+                }
+                *node = m->index;
+                m->pL = l->index;
+                m->pR = r->index;
+                ((Node**)nodes_)[1] = nodes_ + nodes_->pL;
+                return;
+              } while (l != nodes_ && m != nodes_ && r != nodes_);
+              if (l == nodes_) l = m;
+              else r = m;
+            } else {
+              r = m;
+            }
+          } else {
+            l = m;
+          }
+        }
+        mergeP(l, r, node);
       }
 
-      Node* mergeC2(Node* l, Node* r)
+      [[nodiscard]] Node* mergeC(Node* l, Node* r, UInt16* node) noexcept
       {
-        UInt16 root = 0;
-        UInt16* node = &root;
         while (l != nodes_ && r != nodes_) {
           if (l->cPriority < r->cPriority) {
             *node = l->index;
@@ -240,125 +285,56 @@ namespace Atl
           }
         }
         *node = l->index + r->index;
-        return nodes_ + root;
+        return nodes_ + nodes_->pL;
       }
 
-      UInt16 mergeP3(Node* l, Node* m, Node* r)
+      [[nodiscard]] Node* mergeC2(Node* l, Node* r) noexcept
       {
-        UInt16 root = 0;
-        UInt16* node = &root;
-        while (l != nodes_ && r != nodes_) {
-          if (l->pPriority > r->pPriority) {
-            if (l->pPriority > m->pPriority) {
-              *node = l->index;
-              node = &l->pR;
-              l = nodes_ + l->pR;
-              continue;
+        return mergeC(l, r, (UInt16*)nodes_);
+      }
+
+      [[nodiscard]] Node* mergeC3(Node* l, Node* m, Node* r) noexcept
+      {
+        UInt16* node{(UInt16*)nodes_};
+        if (m != nodes_) {
+          if (l != nodes_) {
+            if (r != nodes_) {
+              do {
+                if (l->cPriority < r->cPriority) {
+                  if (l->cPriority < m->cPriority) {
+                    *node = l->index;
+                    node = &l->cR;
+                    l = nodes_ + l->cR;
+                    continue;
+                  }
+                } else if(m->cPriority > r->cPriority) {
+                  *node = r->index;
+                  node = &r->cL;
+                  r = nodes_ + r->cL;
+                  continue;
+                }
+                *node = m->index;
+                m->cL = l->index;
+                m->cR = r->index;
+                return nodes_ + nodes_->pL;
+              } while (l != nodes_ && m != nodes_ && r != nodes_);
+              if (l == nodes_) l = m;
+              else r = m;
+            } else {
+              r = m;
             }
-          } else if(m->pPriority <= r->pPriority) {
-            *node = r->index;
-            node = &r->pL;
-            r = nodes_ + r->pL;
-            continue;
-          }
-          *node = m->index;
-          m->pL = l->index;
-          m->pR = r->index;
-          return root;
-        }
-        if (l == nodes_) l = m;
-        else r = m;
-        while (l != nodes_ && r != nodes_) {
-          if (l->pPriority > r->pPriority) {
-            *node = l->index;
-            node = &l->pR;
-            l = nodes_ + l->pR;
           } else {
-            *node = r->index;
-            node = &r->pL;
-            r = nodes_ + r->pL;
+            l = m;
           }
         }
-        *node = l->index + r->index;
-        return root;
+        return mergeC(l, r, node);
       }
 
-      Node* mergeC3(Node* l, Node* m, Node* r)
+      [[nodiscard]] Bool hasNode(UInt16 index, UInt16 size) noexcept
       {
-        UInt16 root = 0;
-        UInt16* node = &root;
-        while (l != nodes_ && r != nodes_) {
-          if (l->cPriority > r->cPriority) {
-            if (l->cPriority > m->cPriority) {
-              *node = l->index;
-              node = &l->cR;
-              l = nodes_ + l->cR;
-              continue;
-            }
-          } else if(m->cPriority <= r->cPriority) {
-            *node = r->index;
-            node = &r->cL;
-            r = nodes_ + r->cL;
-            continue;
-          }
-          *node = m->index;
-          m->cL = l->index;
-          m->cR = r->index;
-          return nodes_ + root;
-        }
-        if (l == nodes_) l = m;
-        else r = m;
-        while (l != nodes_ && r != nodes_) {
-          if (l->cPriority > r->cPriority) {
-            *node = l->index;
-            node = &l->cR;
-            l = nodes_ + l->cR;
-          } else {
-            *node = r->index;
-            node = &r->cL;
-            r = nodes_ + r->cL;
-          }
-        }
-        *node = l->index + r->index;
-        return nodes_ + root;
-      }
-
-      UInt16 searchSize(UInt16 size) noexcept
-      {
-        UInt16 target;
-        Node* node{nodes_ + nodes_->cPriority};
-        while (node != nodes_)
-        {
-          if (node->size >= size) {
-            target = node->index;
-            node = nodes_ + node->pL;
-          } else {
-            node = nodes_ + node->pR;
-          }
-        }
-        return target;
-      }
-
-      [[nodiscard]] Void* allocate(UInt16 size) noexcept {
-        SplitLMR pLMR{splitP3(searchSize(size))};
-        Node* memory{pLMR.m};
-        Node* node{memory + size};
-        node->init(node - nodes_, memory->size - size);
-        pLMR.m = mergeC2(nodes_ + memory->cL, nodes_ + memory->cR);
-        if (node->size < 0xff) {
-          nodes_->cPriority = mergeP3(pLMR.l, pLMR.m, pLMR.r);
-          pLMR = splitP3(node->size);
-        }
-        SplitLR cLR{splitC2(pLMR.m, node->index)};
-        nodes_->cPriority = mergeP3(pLMR.l, mergeC3(cLR.l, node, cLR.r), pLMR.r);
-        return memory;
-      }
-
-      Bool hasNode(UInt16 index, UInt16 size) noexcept
-      {
-        Node* node{nodes_ + nodes_->cPriority};
+        Node* node{((Node**)nodes_)[1]};
         while (node != nodes_) {
-          if (node->size == size) {
+          if (node->pKey == size) {
             while (node != nodes_) {
               if (node->index == index) {
                 return true;
@@ -369,7 +345,7 @@ namespace Atl
               }
             }
             return false;
-          } else if (node->size > size) {
+          } else if (node->pKey > size) {
             node = nodes_ + node->pL;
           } else {
             node = nodes_ + node->pR;
@@ -378,73 +354,135 @@ namespace Atl
         return false;
       }
 
-      Void remove(Node* node) noexcept
+    public:
+      [[nodiscard]] Void* allocate(UInt8 size) noexcept
       {
-        SplitLMR pLMR{splitP3(node->size)};
-        SplitLMR cLMR{splitC3(pLMR.m, node->index)};
-        nodes_->cPriority = mergeP3(pLMR.l, mergeC2(cLMR.l, cLMR.r), pLMR.r);
+        UInt8 pKey;
+        Node* node{((Node**)nodes_)[1]};
+        while (node != nodes_)
+        {
+          if (node->pKey >= size) {
+            pKey = node->pKey;
+            node = nodes_ + node->pL;
+          } else {
+            node = nodes_ + node->pR;
+          }
+        }
+        SplitLMR pLMR{splitP3(pKey)};
+        Node* memory{pLMR.m};
+        pLMR.m = mergeC2(nodes_ + memory->cL, nodes_ + memory->cR);
+        Bool needResize{memory->pKey == nodes_->size && pLMR.m == nodes_};
+        if (memory->size > size) {
+          node = memory + size;
+          node->init(memory->index + size, memory->size - size);
+          if (node->size < 0xff) {
+            mergeP3(pLMR.l, pLMR.m, pLMR.r);
+            pLMR = splitP3(node->pKey);
+          }
+          SplitLR cLR{splitC2(pLMR.m, node->index)};
+          pLMR.m = mergeC3(cLR.l, node, cLR.r);
+        }
+        mergeP3(pLMR.l, pLMR.m, pLMR.r);
+        if (needResize) {
+          if (((Node**)nodes_)[1] != nodes_) {
+            Node* node{((Node**)nodes_)[1]};
+            while (node != nodes_)
+            {
+              node = nodes_ + node->pR;
+            }
+            nodes_->size = node->pKey;
+          } else {
+            nodes_->size = 0;
+          }
+        }
+        return memory;
+      }
+
+      [[nodiscard]] Bool reallocate(Node* memory, UInt8 size, UInt8 newSize) noexcept
+      {
+        memory += size;
+        if (memory - nodes_ < 0x10000 && hasNode(memory->index, memory->pKey) && memory->size >= (newSize -= size)) {
+          SplitLMR pLMR{splitP3(memory->pKey)};
+          SplitLMR cLMR{splitC3(pLMR.m, memory->index)};
+          pLMR.m = mergeC2(cLMR.l, cLMR.r);
+          Bool needResize{memory->pKey == nodes_->size && pLMR.m == nodes_};
+          if (memory->size > newSize) {
+            size = memory->size - newSize;
+            memory += newSize;
+            memory->init(memory - nodes_, size);
+            if (memory->size < 0xff) {
+              mergeP3(pLMR.l, pLMR.m, pLMR.r);
+              pLMR = splitP3(memory->pKey);
+            }
+            SplitLR cLR{splitC2(pLMR.m, memory->index)};
+            pLMR.m = mergeC3(cLR.l, memory, cLR.r);
+          }
+          mergeP3(pLMR.l, pLMR.m, pLMR.r);
+          if (needResize) {
+            if (((Node**)nodes_)[1] != nodes_) {
+              Node* node{((Node**)nodes_)[1]};
+              while (node != nodes_)
+              {
+                node = nodes_ + node->pR;
+              }
+              nodes_->size = node->pKey;
+            } else {
+              nodes_->size = 0;
+            }
+          }
+          return true;
+        }
+        return false;
       }
 
       Void deallocate(Node* memory, UInt16 size) noexcept
       {
         Node* node{memory + size};
-        if (hasNode(node->index, node->size)) {
-          remove(node);
-          size += node->size;
+        UInt64 begin, end;
+        if (node - nodes_ < 0x10000) {
+          if (hasNode(node->index, node->pKey)) {
+            SplitLMR pLMR{splitP3(node->pKey)};
+            SplitLMR cLMR{splitC3(pLMR.m, node->index)};
+            mergeP3(pLMR.l, mergeC2(cLMR.l, cLMR.r), pLMR.r);
+            size += node->size;
+            end = min(alignUpPage(node + 1),
+                node->index + node->size < 0x10000 ? alignDownPage(node + node->size - 1) : (UInt64)(node + node->size));
+          } else {
+            end = alignDownPage(node - 1);
+          }
+        } else {
+          end = (UInt64)node;
         }
-        node = nodes_ + memory[-1].index;
-        if (node->size == memory - node && hasNode(node->index, node->size)) {
-          remove(node);
+        UInt16 i{memory[-1].index};
+        UInt16 s{memory[-1].size};
+        if (i && i + s == memory->index && hasNode(i, s <= 0xff ? s : 0xff)) {
+          node = nodes_ + i;
+          SplitLMR pLMR{splitP3(node->pKey)};
+          SplitLMR cLMR{splitC3(pLMR.m, node->index)};
+          mergeP3(pLMR.l, mergeC2(cLMR.l, cLMR.r), pLMR.r);
+          begin = max(alignUpPage(node + 1), alignDownPage(memory - 1));
           memory = node;
-          memory->resize(size);
+          memory->resize(size += memory->size);
         } else {
           memory->init(memory - nodes_, size);
+          begin = alignUpPage(memory + 1);
         }
-        if (size > nodes_->size) nodes_->size = size;
-        SplitLMR pLMR{splitP3(min(size, 0xffui16))};
+        if (nodes_->size < memory->pKey) nodes_->size = memory->pKey;
+        if (begin < end) releasePage((Void*)begin, end - begin);
+        SplitLMR pLMR{splitP3(memory->pKey)};
         SplitLR cLR{splitC2(pLMR.m, memory->index)};
-        nodes_->cPriority = mergeP3(pLMR.l, mergeC3(cLR.l, memory, cLR.r), pLMR.r);
-      }
-/*
-      Void insert(UInt16 index, UInt16 size)
-      {
-        nodes_[index].init(index, size);
-        if (!nodes_->cPriority) [[unlikely]] {
-          nodes_->cPriority = index;
-          return;
-        }
-        SplitLMR LMR = splitP3(size);
-        if (LMR.l == nodes_) nodes_->cPriority = mergeP2(nodes_ + index, LMR.r);
-        else if (LMR.r == nodes_) nodes_->cPriority = mergeP2(LMR.l, nodes_ + index);
-        else nodes_->cPriority = mergeP3(LMR.l, nodes_ + index, LMR.r);
+        mergeP3(pLMR.l, mergeC3(cLR.l, memory, cLR.r), pLMR.r);
       }
 
-      Void insert3(UInt16 index, UInt16 size)
+      Void printTreeHorizontal(Node* r, int depth = 0, const std::string& prefix = "")
       {
-        nodes_[index].init(index, size);
-        if (!nodes_->cPriority) [[unlikely]] {
-          nodes_->cPriority = index;
-          return;
-        }
-        SplitLR LR = splitP2(size);
-        UInt16 MR{LR.r != nodes_ ? mergeP2(nodes_ + index, LR.r) : index};
-        nodes_->cPriority = LR.l != nodes_? mergeP2(LR.l, nodes_ + MR) : MR;
+        if (r == nodes_) return;
+        printTreeHorizontal(nodes_ + r->pR, depth + 1, prefix);
+        std::cout << std::string(depth * 4, ' ') << r->size << std::endl;
+        printTreeHorizontal(nodes_ + r->pL, depth + 1, prefix);
       }
 
-      Void remove(UInt16 size)
-      {
-        SplitLMR LMR = splitP3(size);
-        nodes_->cPriority = LMR.l != nodes_ && LMR.r != nodes_ ? mergeP2(LMR.l, LMR.r) : LMR.l->index + LMR.r->index;
-        //return {nodes_ + M_R.l, /*size};
-      }
-*/
-      Void printTreeHorizontal(Node& r, int depth = 0, const std::string& prefix = "") {
-        if (&r == nodes_) return;
-        printTreeHorizontal(nodes_[r.pR], depth + 1, prefix);
-        std::cout << std::string(depth * 4, ' ') << r.size << std::endl;
-        printTreeHorizontal(nodes_[r.pL], depth + 1, prefix);
-      }
-
+    private:
       Node* nodes_;
     };
 /*
