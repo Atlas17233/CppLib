@@ -54,97 +54,97 @@ namespace Atl
   export template <Bool value, typename Type1, typename Type2>
   using conditional = Conditional<value, Type1, Type2>::Type;
 
-  export template<typename, typename>
+  export template <typename, typename>
   constexpr Bool isSame{false};
 
-  template<typename Type>
+  template <typename Type>
   constexpr Bool isSame<Type, Type>{true};
 
-  template<typename T>
+  template <typename T>
   struct RemoveConst
   {
     using Type = T;
   };
 
-  template<typename T>
+  template <typename T>
   struct RemoveConst<const T>
   {
     using Type = T;
   };
 
-  template<typename T>
+  template <typename T>
   struct RemoveVolatile
   {
     using Type = T;
   };
 
-  template<typename T>
+  template <typename T>
   struct RemoveVolatile<volatile T>
   {
     using Type = T;
   };
 
-  template<typename T>
+  template <typename T>
   struct RemoveConstVolatile
   {
     using Type = T;
 
-    template<template<typename> typename Function>
+    template <template <typename> typename Function>
     using _Apply = Function<T>;
   };
 
-  template<typename T>
+  template <typename T>
   struct RemoveConstVolatile<const T>
   {
     using Type = T;
 
-    template<template<typename> typename Function>
+    template <template <typename> typename Function>
     using _Apply = const Function<T>;
   };
 
-  template<typename T>
+  template <typename T>
   struct RemoveConstVolatile<volatile T>
   {
     using Type = T;
 
-    template<template<typename> typename Function>
+    template <template <typename> typename Function>
     using _Apply = volatile Function<T>;
   };
 
-  template<typename T>
+  template <typename T>
   struct RemoveConstVolatile<const volatile T>
   {
     using Type = T;
 
-    template<template<typename> typename Function>
+    template <template <typename> typename Function>
     using _Apply = const volatile Function<T>;
   };
 
-  export template<typename Type>
+  export template <typename Type>
   using removeC = RemoveConst<Type>::Type;
 
-  export template<typename Type>
+  export template <typename Type>
   using removeV = RemoveVolatile<Type>::Type;
 
-  export template<typename Type>
+  export template <typename Type>
   using removeCV = RemoveConstVolatile<Type>::Type;
 
-  template<typename Type, typename... Types>
+  template <typename Type, typename... Types>
   constexpr Bool isAnyOf{(isSame<Type, Types> || ...)};
 
-  template<typename Type>
+  template <typename Type>
   constexpr Bool isSignedIntegral{isAnyOf<removeCV<Type>, Char, Int8, Int16, Int32, Int64>};
 
-  template<typename Type>
+  template <typename Type>
   constexpr Bool isUnsignedIntegral{isAnyOf<removeCV<Type>, Bool, CharW, UTF8, UTF16, UTF32, UInt8, UInt16, UInt32, UInt64>};
 
-  export template<typename Type>
+  export template <typename Type>
   constexpr Bool isIntegral{isSignedIntegral<Type> || isUnsignedIntegral<Type>};
 
   template <typename Type>
   constexpr Bool isNonboolIntegral = isIntegral<Type> && !isSame<removeCV<Type>, Bool>;
 
-  export template<typename Type>
+  export template <typename Type>
   constexpr Bool isFloating{isAnyOf<removeCV<Type>, Float, Double>};
 
   export template <typename Type>
@@ -179,15 +179,6 @@ namespace Atl
 
   template <typename Type>
   using ConstThroughReference = RemoveReference<Type>::ConstThroughReference;
-
-  export template <Bool... rest>
-  constexpr Bool allTrue{true};
-
-  template <Bool... rest>
-  constexpr Bool allTrue<false, rest...>{false};
-
-  template <Bool... rest>
-  constexpr Bool allTrue<true, rest...>{allTrue<rest...>};
 
   export template <typename Type>
   constexpr Bool isVoid = isSame<removeCV<Type>, Void>;
@@ -338,43 +329,43 @@ namespace Atl
   template <typename Type>
   constexpr Bool isUnboundedArray<Type[]>{true};
 
-  export template<typename>
+  export template <typename>
   constexpr Bool isLvalueReference{false};
 
-  template<typename Type>
+  template <typename Type>
   constexpr Bool isLvalueReference<Type&>{true};
 
-  export template<typename>
+  export template <typename>
   constexpr Bool isRvalueReference{false};
 
-  template<typename Type>
+  template <typename Type>
   constexpr Bool isRvalueReference<Type&&>{true};
 
-  export template<typename>
+  export template <typename>
   constexpr Bool isReference{false};
 
-  template<typename Type>
+  template <typename Type>
   constexpr Bool isReference<Type&>{true};
 
-  template<typename Type>
+  template <typename Type>
   constexpr Bool isReference<Type&&>{true};
 
-  export template<typename>
+  export template <typename>
   constexpr Bool isPointer{false};
 
-  template<typename Type>
+  template <typename Type>
   constexpr Bool isPointer<Type*>{true};
 
-  template<typename Type>
+  template <typename Type>
   constexpr Bool isPointer<Type* const>{true};
 
-  template<typename Type>
+  template <typename Type>
   constexpr Bool isPointer<Type* volatile>{true};
 
-  template<typename Type>
+  template <typename Type>
   constexpr Bool isPointer<Type* const volatile>{true};
 
-  export template<typename Type>
+  export template <typename Type>
   constexpr Bool isNullptr{isSame<removeCV<Type>, Nullptr>};
 
   export template <typename Type>
@@ -393,7 +384,7 @@ namespace Atl
   constexpr Bool isEnum{__is_enum(Type)};
 
   export template <typename Type>
-  constexpr Bool isScopedEnum{allTrue<isEnum<Type>, !isConvertible<Type, Int>>};
+  constexpr Bool isScopedEnum{isEnum<Type> && !isConvertible<Type, Int>};
 
   export template <typename Type>
   constexpr Bool isCompound{!isFundamental<Type>};
@@ -416,11 +407,13 @@ namespace Atl
   export template <typename Type>
   constexpr Bool isObject{isConst<const Type> && !isVoid<Type>};
 
-  template<typename Type>
+  template <typename Type>
   struct MemberPointer: False {};
 
-  template<typename Type, typename Class>
-  struct MemberPointer<Type Class::*>: True {};
+  template <typename Type, typename C>
+  struct MemberPointer<Type C::*>: True {
+    using Class = C;
+  };
 
   export template <typename Type>
   constexpr Bool isMemberPointer{MemberPointer<removeCV<Type>>::value};
@@ -473,14 +466,11 @@ namespace Atl
   export template <typename Type>
   constexpr Bool isDefaultConstructible{__is_constructible(Type)};
 
-  template <typename Type, typename = Void>
-  struct ImplicitlyDefaultConstructible: False {};
-
   template <typename Type>
   Void ImplicitlyDefaultConstruct(const Type&);
 
-  template <typename Type>
-  struct ImplicitlyDefaultConstructible<Type, Vaild<decltype(ImplicitlyDefaultConstruct<Type>({}))>>: True {};
+  template<typename Type>
+  concept isImplicitlyDefaultConstructible = requires { ImplicitlyDefaultConstruct<Type>({}); };
 
   export template <typename Type>
   constexpr Bool isMoveConstructible{__is_constructible(Type, Type)};
@@ -569,99 +559,100 @@ namespace Atl
   template <typename Type>
   constexpr Bool isStandardUnsigned{isAnyOf<Type, UInt8, UInt16, UInt32, UInt64>};
 
-  //**********************************************************************************************************************************************************************************************************************************
-  template <Size>
-  struct _Make_signed2; // Choose make_signed strategy by type size
-
-  template <>
-  struct _Make_signed2<1> {
-    using _Apply = Int8;
-  };
-
-  template <>
-  struct _Make_signed2<2> {
-    using _Apply = Int16;
-  };
-
-  template <>
-  struct _Make_signed2<4> {
-    using _Apply = Int32;
-  };
-
-  template <>
-  struct _Make_signed2<8> {
-    using _Apply = Int64;
-  };
-
   template <typename Type>
-  using _Make_signed1 = _Make_signed2<sizeof(Type)>::_Apply;
+  concept StandardUnsignedIntegral = isStandardUnsigned<Type>;
+
+  template <Size>
+  struct MakeSigned;
+
+  template <>
+  struct MakeSigned<1> {
+    using Type = Int8;
+  };
+
+  template <>
+  struct MakeSigned<2> {
+    using Type = Int16;
+  };
+
+  template <>
+  struct MakeSigned<4> {
+    using Type = Int32;
+  };
+
+  template <>
+  struct MakeSigned<8> {
+    using Type = Int64;
+  };
 
   export template <typename Type>
-  using makeSigned = RemoveConstVolatile<Type>::template _Apply<_Make_signed1>; // isNonboolIntegral<T> || isEnum<T>
+  using SignedType = MakeSigned<sizeof(removeCV<Type>)>::Type; // isNonboolIntegral<T> || isEnum<T>
 
   template <Size>
-  struct _Make_unsigned2;
+  struct MakeUnsigned;
 
   template <>
-  struct _Make_unsigned2<1> {
-    using _Apply = UInt8;
+  struct MakeUnsigned<1> {
+    using Type = UInt8;
   };
 
   template <>
-  struct _Make_unsigned2<2> {
-    using _Apply = UInt16;
+  struct MakeUnsigned<2> {
+    using Type = UInt16;
   };
 
   template <>
-  struct _Make_unsigned2<4> {
-    using _Apply = UInt32;
+  struct MakeUnsigned<4> {
+    using Type = UInt32;
   };
 
   template <>
-  struct _Make_unsigned2<8> {
-    using _Apply = UInt64;
+  struct MakeUnsigned<8> {
+    using Type = UInt64;
   };
 
-  template <typename T>
-  using _Make_unsigned1 = _Make_unsigned2<sizeof(T)>::_Apply;
+  export template <typename Type>
+  using UnsignedType = MakeUnsigned<sizeof(removeCV<Type>)>::Type; // isNonboolIntegral<T> || isEnum<T>
 
-  export template <typename T>
-  using makeUnsigned = RemoveConstVolatile<T>::template _Apply<_Make_unsigned1>; // isNonboolIntegral<T> || isEnum<T>
+  template <typename Type>
+  constexpr UnsignedType<Type> unsignedValue(Type value) {
+    return (UnsignedType<Type>)value;
+  }
 
-  export template <typename T>
-  constexpr Size alignOf{alignof(T)};
+  export template <typename Type>
+  constexpr Size alignOf{alignof(Type)};
 
   template <typename T, Bool = isEnum<T>>
   struct UnderlyingType {
-  using Type = __underlying_type(T);
+    using Type = __underlying_type(T);
   };
 
-  template <typename T>
-  struct UnderlyingType<T, false> {};
+  template <typename Type>
+  struct UnderlyingType<Type, false> {};
 
-  export template <typename T>
-  using underlyingType = UnderlyingType<T>::Type;
+  export template <typename Type>
+  using underlyingType = UnderlyingType<Type>::Type;
 
-  export template <typename T>
+  export template <typename Type>
   constexpr Size rank = 0;
 
-  template <typename T, Size n>
-  constexpr Size rank<T[n]> = rank<T> + 1;
+  template <typename Type, Size n>
+  constexpr Size rank<Type[n]> = rank<Type> + 1;
 
-  template <typename T>
-  constexpr Size rank<T[]> = rank<T> + 1;
+  template <typename Type>
+  constexpr Size rank<Type[]> = rank<Type> + 1;
 
-  export template <typename T, UInt32 i = 0>
+  export template <typename Type, UInt32 i = 0>
   constexpr Size extent = 0;
 
-  template <typename T, Size n>
-  constexpr Size extent<T[n], 0> = n;
+  template <typename Type, Size n>
+  constexpr Size extent<Type[n], 0> = n;
 
-  template <typename T, UInt32 i, Size n>
-  constexpr Size extent<T[n], i> = extent<T, i - 1>;
+  template <typename Type, UInt32 i, Size n>
+  constexpr Size extent<Type[n], i> = extent<Type, i - 1>;
 
-  template <typename T, UInt32 i>
-  constexpr Size extent<T[], i> = extent<T, i - 1>;
+  template <typename Type, UInt32 i>
+  constexpr Size extent<Type[], i> = extent<Type, i - 1>;
 
   export template <typename Base, typename Derived>
   constexpr Bool isBaseOf = __is_base_of(Base, Derived);
@@ -669,44 +660,39 @@ namespace Atl
   export template <typename T, typename U = removeR<T>>
   using decay = conditional<isArray<U>, Pointer<removeExtent<U>>, conditional<isFunction<U>, Pointer<U>, removeCV<U>>>;
 
+  template <typename Type1, typename Type2>
+  using conditionalType = decltype(false ? declvalue<Type1>() : declvalue<Type2>());
 
+  template <typename Type1, typename Type2>
+  struct ConstLvalueConditionalOperator {};
 
-
-
-
-template <typename Type1, typename Type2>
-using conditionalType = decltype(false ? declvalue<Type1>() : declvalue<Type2>());
-
-template <typename Type1, typename Type2>
-struct ConstLvalueConditionalOperator {};
-
-template <typename Type1, typename Type2>
+  template <typename Type1, typename Type2>
   requires requires { typename conditionalType<const Type1&, const Type2&>; }
-struct ConstLvalueConditionalOperator<Type1, Type2>
-{
-  using Type = removeCVR<conditionalType<const Type1&, const Type2&>>;
-};
+  struct ConstLvalueConditionalOperator<Type1, Type2>
+  {
+    using Type = removeCVR<conditionalType<const Type1&, const Type2&>>;
+  };
 
-template <typename Type1, typename Type2, typename = Void>
-struct DecayedConditionalOperator: ConstLvalueConditionalOperator<Type1, Type2> {};
+  template <typename Type1, typename Type2, typename = Void>
+  struct DecayedConditionalOperator: ConstLvalueConditionalOperator<Type1, Type2> {};
 
-template <typename Type1, typename Type2>
-struct DecayedConditionalOperator<Type1, Type2, Vaild<conditionalType<Type1, Type2>>>
-{
-  using Type = decay<conditionalType<Type1, Type2>>;
-};
+  template <typename Type1, typename Type2>
+  struct DecayedConditionalOperator<Type1, Type2, Vaild<conditionalType<Type1, Type2>>>
+  {
+    using Type = decay<conditionalType<Type1, Type2>>;
+  };
 
-export template <typename... T>
-struct CommonType;
+  export template <typename... Types>
+  struct CommonType;
 
-export template <typename... T>
-using commonType = CommonType<T...>::Type;
+  export template <typename... Types>
+  using commonType = CommonType<Types...>::Type;
 
-template <>
-struct CommonType<> {};
+  template <>
+  struct CommonType<> {};
 
-template <typename Type1>
-struct CommonType<Type1> : CommonType<Type1, Type1> {};
+  template <typename Type1>
+  struct CommonType<Type1> : CommonType<Type1, Type1> {};
 
 template <typename Type1, typename Type2, typename Decayed1 = decay<Type1>, typename Decayed2 = decay<Type2>>
 struct CommonType2 : CommonType<Decayed1, Decayed2> {};
@@ -883,23 +869,344 @@ template <typename Type1, typename Type2, typename T3, typename... Rest>
 struct common_reference<Type1, Type2, T3, Rest...> : common_reference<common_reference_t<Type1, Type2>, T3, Rest...> {
 };
 
-export template <typename T>
-struct type_identity {
-  using type = T;
+  export template <typename T>
+  struct TypeIidentity {
+    using Type = T;
+  };
+
+  export template <typename Type>
+  using typeIdentity = TypeIidentity<Type>::Type;
+
+  template <typename Type, template <typename...> typename Template>
+  constexpr Bool isSpecialization{false}; // true if and only if Type is a specialization of _Template
+  template <template <typename...> typename Template, typename... Types>
+  constexpr Bool isSpecialization<Template<Types...>, Template>{true};
+
+  export template <typename Type>
+  [[nodiscard]] [[msvc::intrinsic]] constexpr Type&& forward(removeR<Type>& value) noexcept { return (Type&&)value; }
+
+  export template <typename Type>
+  [[nodiscard]] [[msvc::intrinsic]] constexpr removeR<Type>&& move(Type&& value) noexcept { return (removeR<Type>&&)value; }
+
+  export template <typename Type>
+  [[nodiscard]] [[msvc::intrinsic]] constexpr
+    conditional<!isNothrowMoveConstructible<Type> && isCopyConstructible<Type>, const Type&, Type&&>
+    moveIfNoexcept(Type& value) noexcept
+  {
+    return move(value);
+  }
+
+  export template <typename Type>
+  [[nodiscard]] constexpr Type* addressOf(Type& value) noexcept { return __builtin_addressof(value); }
+
+  template <typename Type>
+  [[nodiscard]] Type fakeCopyInit(Type) noexcept;
+
+  export template <typename Type>
+  class ReferenceWrapper;
+
+  enum class InvokerStrategy {
+    Functor,
+    PmfObject,
+    PmfRefwrap,
+    PmfPointer,
+    PmdObject,
+    PmdRefwrap,
+    PmdPointer
+  };
+
+  struct InvokerFunctor {
+    static constexpr InvokerStrategy strategy{InvokerStrategy::Functor};
+
+    template <typename Callable, typename... Types>
+    static constexpr auto call(Callable&& object, Types&&... values)
+        noexcept(noexcept(((Callable&&)object)(static_cast<Types&&>(values)...))) //
+        -> decltype(((Callable&&)object)(static_cast<Types&&>(values)...))
+    {
+      return ((Callable&&)object)(static_cast<Types&&>(values)...);
+    }
+  };
+
+  struct InvokerPmfObject {
+    static constexpr InvokerStrategy strategy{InvokerStrategy::PmfObject};
+
+    template <typename Decayed, typename Type, typename... Types>
+    static constexpr auto call(Decayed pmf, Type&& argument, Types&&... arguments)
+        noexcept(noexcept((static_cast<Type&&>(argument).*pmf)(static_cast<Types&&>(arguments)...))) //
+        -> decltype((static_cast<Type&&>(argument).*pmf)(static_cast<Types&&>(arguments)...))
+    {
+      return (static_cast<Type&&>(argument).*pmf)(static_cast<Types&&>(arguments)...);
+    }
+  };
+
+  struct InvokerPmfRefwrap {
+    static constexpr InvokerStrategy strategy{InvokerStrategy::PmfRefwrap};
+
+    template <typename Decayed, typename Refwrap, typename... Types>
+    static constexpr auto call(Decayed pmf, Refwrap refwrap, Types&&... arguments)
+        noexcept(noexcept((refwrap.get().*pmf)(static_cast<Types&&>(arguments)...))) //
+        -> decltype((refwrap.get().*pmf)(static_cast<Types&&>(arguments)...))
+    {
+      return (refwrap.get().*pmf)(static_cast<Types&&>(arguments)...);
+    }
+  };
+
+  struct InvokerPmfPointer {
+    static constexpr InvokerStrategy strategy{InvokerStrategy::PmfPointer};
+
+    template <typename Decayed, typename Type, typename... Types>
+    static constexpr auto call(Decayed pmf, Type&& argument, Types&&... arguments)
+        noexcept(noexcept(((*static_cast<Type&&>(argument)).*pmf)(static_cast<Types&&>(arguments)...))) //
+        -> decltype(((*static_cast<Type&&>(argument)).*pmf)(static_cast<Types&&>(arguments)...))
+    {
+      return ((*static_cast<Type&&>(argument)).*pmf)(static_cast<Types&&>(arguments)...);
+    }
+  };
+
+  struct InvokerPmdObject {
+    static constexpr InvokerStrategy strategy{InvokerStrategy::PmdObject};
+
+    template <typename Decayed, typename Type>
+    static constexpr auto call(Decayed pmd, Type&& argument) noexcept -> decltype(static_cast<Type&&>(argument).*pmd)
+    {
+      return static_cast<Type&&>(argument).*pmd;
+    }
+  };
+
+  struct InvokerPmdRefwrap {
+    static constexpr InvokerStrategy strategy{InvokerStrategy::PmdRefwrap};
+
+    template <typename Decayed, typename Refwrap>
+    static constexpr auto call(Decayed pmd, Refwrap refwrap) noexcept -> decltype(refwrap.get().*pmd)
+    {
+      return refwrap.get().*pmd;
+    }
+  };
+
+  struct InvokerPmdPointer {
+    static constexpr InvokerStrategy strategy{InvokerStrategy::PmdPointer};
+
+    template <typename Decayed, typename Type>
+    static constexpr auto call(Decayed pmd, Type&& argument) noexcept(noexcept((*static_cast<Type&&>(argument)).*pmd))
+        -> decltype((*static_cast<Type&&>(argument)).*pmd)
+    {
+      return (*static_cast<Type&&>(argument)).*pmd;
+    }
+  };
+
+  template <typename Callable, typename Type, typename RemovedCVR = removeCVR<Callable>,
+      Bool isPmf = isMemberFunctionPointer<RemovedCVR>,
+      Bool isPmd = isMemberObjectPointer<RemovedCVR>>
+  struct Invoker;
+
+  template <typename Callable, typename Type, typename RemovedCVR>
+  struct Invoker<Callable, Type, RemovedCVR, true, false>
+      : conditional<
+          isSame<typename MemberPointer<RemovedCVR>::Class, removeCVR<Type>>
+              || isBaseOf<typename MemberPointer<RemovedCVR>::Class, removeCVR<Type>>,
+          InvokerPmfObject,
+          conditional<isSpecialization<removeCVR<Type>, ReferenceWrapper>, InvokerPmfRefwrap, InvokerPmfPointer>> {};
+
+  template <typename Callable, typename Type, typename RemovedCVR>
+  struct Invoker<Callable, Type, RemovedCVR, false, true>
+      : conditional<
+          isSame<typename MemberPointer<RemovedCVR>::Class, removeCVR<Type>>
+              || isBaseOf<typename MemberPointer<RemovedCVR>::Class, removeCVR<Type>>,
+          InvokerPmdObject,
+          conditional<isSpecialization<removeCVR<Type>, ReferenceWrapper>, InvokerPmdRefwrap, InvokerPmdPointer>> {};
+
+  template <typename Callable, typename Type, typename RemovedCVR>
+  struct Invoker<Callable, Type, RemovedCVR, false, false> : InvokerFunctor {};
+
+  export template <typename Callable>
+  constexpr auto invoke(Callable&& object) noexcept(noexcept(((Callable&&)object)())) -> decltype(((Callable&&)object)())
+  {
+    return ((Callable&&)object)();
+  }
+
+  export template <typename Callable, typename Type, typename... Types>
+  constexpr auto invoke(Callable&& object, Type&& argument, Types&&... arguments)
+      noexcept(noexcept(Invoker<Callable, Type>::_Call(
+          (Callable&&)object, static_cast<Type&&>(argument), static_cast<Types&&>(arguments)...))) //
+      -> decltype(Invoker<Callable, Type>::_Call(
+          (Callable&&)object, static_cast<Type&&>(argument), static_cast<Types&&>(arguments)...))
+  {
+    if constexpr (Invoker<Callable, Type>::strategy == InvokerStrategy::Functor) {
+      return ((Callable&&)object)(static_cast<Type&&>(argument), static_cast<Types&&>(arguments)...);
+    } else if constexpr (Invoker<Callable, Type>::strategy == InvokerStrategy::PmfObject) {
+      return (static_cast<Type&&>(argument).*object)(static_cast<Types&&>(arguments)...);
+    } else if constexpr (Invoker<Callable, Type>::strategy == InvokerStrategy::PmfRefwrap) {
+      return (argument.get().*object)(static_cast<Types&&>(arguments)...);
+    } else if constexpr (Invoker<Callable, Type>::strategy == InvokerStrategy::PmfPointer) {
+      return ((*static_cast<Type&&>(argument)).*object)(static_cast<Types&&>(arguments)...);
+    } else if constexpr (Invoker<Callable, Type>::strategy == InvokerStrategy::PmdObject) {
+      return static_cast<Type&&>(argument).*object;
+    } else if constexpr (Invoker<Callable, Type>::strategy == InvokerStrategy::PmdRefwrap) {
+      return argument.get().*object;
+    } else {
+      _STL_INTERNAL_STATIC_ASSERT(Invoker<Callable, Type>::strategy == InvokerStrategy::PmdPointer);
+      return (*static_cast<Type&&>(argument)).*object;
+    }
+  }
+
+  template <typename From, typename To, Bool = isConvertible<From, To>, Bool = isVoid<To>>
+  constexpr Bool isNothrowConvertible = noexcept(fakeCopyInit<To>(declvalue<From>()));
+
+  template <typename From, typename To, Bool isVoid>
+  constexpr Bool isNothrowConvertible<From, To, false, isVoid> = false;
+
+  template <typename From, typename To>
+  constexpr Bool isNothrowConvertible<From, To, true, true> = true;
+
+  template <typename From, typename To, typename = Void>
+  constexpr Bool isInvokeConvertible{false};
+
+  template <typename To, typename From>
+  constexpr Bool notReferenceConvertsFromTemporary{true};
+
+  template <typename From, typename To>
+  constexpr Bool isInvokeConvertible<From, To, Vaild<decltype(fakeCopyInit<To>(returnsExactly<From>()))>>
+      {notReferenceConvertsFromTemporary<To, From>};
+
+  template <typename From, typename To>
+  constexpr Bool isInvokeNothrowConvertible{noexcept(fakeCopyInit<To>(returnsExactly<From>()))};
+
+  template <typename Result, Bool isNothrow>
+  struct InvokeTraitsCommon {
+    using Type = Result;
+    static constexpr Bool isInvocable{true};
+    static constexpr Bool isNothrowInvocable{isNothrow};
+    template <typename Rx>
+    static constexpr Bool isInvocableR{isVoid<Rx> || isInvokeConvertible<Type, Rx>};
+    template <typename Rx>
+    static constexpr Bool isNothrowInvocableR
+        {isNothrowInvocable && (isVoid<Rx> || isInvokeConvertible<Type, Rx> && isInvokeNothrowConvertible<Type, Rx>)};
+  };
+
+  template <typename Void, typename Callable>
+  struct InvokeTraitsZero {
+    static constexpr Bool isInvocable{false};
+    static constexpr Bool isNothrowInvocable{false};
+    template <typename Rx>
+    static constexpr Bool isInvocableR{false};
+    template <typename Rx>
+    static constexpr Bool isNothrowInvocableR{false};
+  };
+
+  template <typename Callable>
+  using DecltypeInvokeZero = decltype(declvalue<Callable>()());
+
+  template <typename Callable>
+  struct InvokeTraitsZero<Vaild<DecltypeInvokeZero<Callable>>, Callable>
+      : InvokeTraitsCommon<DecltypeInvokeZero<Callable>, noexcept(declvalue<Callable>()())> {};
+
+  template <typename Void, typename... Types>
+  struct InvokeTraitsNonzero {
+    static constexpr Bool isInvocable{false};
+    static constexpr Bool isNothrowInvocable{false};
+    template <typename Rx>
+    static constexpr Bool isInvocableR{false};
+    template <typename Rx>
+    static constexpr Bool isNothrowInvocableR{false};
+  };
+
+  template <class Callable, class Type, class... Types>
+  using DecltypeInvokeNonzero = decltype(Invoker<Callable, Type>::_Call(
+    declvalue<Callable>(), declvalue<Type>(), declvalue<Types>()...));
+
+  template <class Callable, class Type, class... Types>
+  struct InvokeTraitsNonzero<Vaild<DecltypeInvokeNonzero<Callable, Type, Types...>>, Callable, Type, Types...>
+      : InvokeTraitsCommon<DecltypeInvokeNonzero<Callable, Type, Types...>,
+          noexcept(Invoker<Callable, Type>::call(declvalue<Callable>(), declvalue<Type>(), declvalue<Types>()...))> {};
+/*
+template <class Callable, class... _Args>
+using _Select_invoke_traits = conditional_t<sizeof...(_Args) == 0, _Invoke_traits_zero<void, Callable>,
+  _Invoke_traits_nonzero<void, Callable, _Args...>>;
+
+template <class Callable, class... _Args>
+using _Invoke_result_t = typename _Select_invoke_traits<Callable, _Args...>::type;
+
+template <class _Rx, class Callable, class... _Args>
+using _Is_invocable_r_ = typename _Select_invoke_traits<Callable, _Args...>::template _Is_invocable_r<_Rx>;
+
+template <class _Rx, class Callable, class... _Args>
+struct _Is_invocable_r : _Is_invocable_r_<_Rx, Callable, _Args...> {
+  // determines whether Callable is callable with _Args and return type _Rx
 };
-export template <typename T>
-using type_identity_t = type_identity<T>::type;
 
-//1625
+export template <class Callable, class... _Args>
+struct invoke_result : _Select_invoke_traits<Callable, _Args...> {
+  // determine the result type of invoking Callable with _Args
+};
 
-export template <typename Type>
-[[nodiscard]] constexpr Type&& forward(removeR<Type>& value) noexcept {//lvalue(Type)
-  return static_cast<Type&&>(value);
+export template <class Callable, class... _Args>
+using invoke_result_t = typename _Select_invoke_traits<Callable, _Args...>::type;
+
+export template <class Callable, class... _Args>
+struct is_invocable : _Select_invoke_traits<Callable, _Args...>::_Is_invocable {
+  // determines whether Callable is callable with _Args
+};
+
+export template <class Callable, class... _Args>
+constexpr bool is_invocable_v =
+  _Select_invoke_traits<Callable, _Args...>::_Is_invocable::value;
+
+export template <class Callable, class... _Args>
+struct is_nothrow_invocable
+  : _Select_invoke_traits<Callable, _Args...>::_Is_nothrow_invocable {
+  // determines whether Callable is nothrow-callable with _Args
+};
+
+export template <class Callable, class... _Args>
+constexpr bool is_nothrow_invocable_v =
+  _Select_invoke_traits<Callable, _Args...>::_Is_nothrow_invocable::value;
+
+export template <class _Rx, class Callable, class... _Args>
+struct is_invocable_r : _Is_invocable_r_<_Rx, Callable, _Args...> {
+  // determines whether Callable is callable with _Args and return type _Rx
+};
+
+export template <class _Rx, class Callable, class... _Args>
+constexpr bool is_invocable_r_v = _Is_invocable_r_<_Rx, Callable, _Args...>::value;
+
+export template <class _Rx, class Callable, class... _Args>
+struct is_nothrow_invocable_r
+  : _Select_invoke_traits<Callable, _Args...>::template _Is_nothrow_invocable_r<_Rx> {
+  // determines whether Callable is nothrow-callable with _Args and return type _Rx
+};
+
+export template <class _Rx, class Callable, class... _Args>
+constexpr bool is_nothrow_invocable_r_v =
+  _Select_invoke_traits<Callable, _Args...>::template _Is_nothrow_invocable_r<_Rx>::value;
+
+export template <class Type, class _Ty2>
+struct is_layout_compatible : bool_constant<__is_layout_compatible(Type, _Ty2)> {};
+
+export template <class Type, class _Ty2>
+constexpr bool is_layout_compatible_v = __is_layout_compatible(Type, _Ty2);
+
+export template <class _Base, class _Derived>
+struct is_pointer_interconvertible_base_of
+  : bool_constant<__is_pointer_interconvertible_base_of(_Base, _Derived)> {};
+
+export template <class _Base, class _Derived>
+constexpr bool is_pointer_interconvertible_base_of_v =
+  __is_pointer_interconvertible_base_of(_Base, _Derived);
+
+export template <class _ClassTy, class _MemberTy>
+[[nodiscard]] constexpr bool is_pointer_interconvertible_with_class(
+  _MemberTy _ClassTy::* _Pm) noexcept {
+  return __is_pointer_interconvertible_with_class(_ClassTy, _Pm);
 }
 
-export template <typename Type>
-[[nodiscard]] constexpr removeR<Type>&& move(Type&& value) noexcept {
-  return (removeR<Type>&&)value;
+export template <class _ClassTy1, class _ClassTy2, class _MemberTy1, class _MemberTy2>
+[[nodiscard]] constexpr bool is_corresponding_member(
+  _MemberTy1 _ClassTy1::* _Pm1, _MemberTy2 _ClassTy2::* _Pm2) noexcept {
+  return __is_corresponding_member(_ClassTy1, _ClassTy2, _Pm1, _Pm2);
 }
 
+template <class _Ty>
+struct _Function_args {}; // determine whether _Ty is a function
+*/
+//2068
 }

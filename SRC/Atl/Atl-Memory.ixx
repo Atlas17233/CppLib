@@ -1,33 +1,24 @@
 export module Atl:Memory;
 
 import :Def;
-
-import <windows.h>;
+import :Windows;
 
 namespace Atl
 {
-  constexpr UInt32 Reserve{0x2000};
-  constexpr UInt32 Commit{0x1000};
-  constexpr UInt32 Decommit{0x4000};
-  constexpr UInt32 Alloc{Reserve | Commit};
-  constexpr UInt32 Release{0x8000};
-
-  constexpr UInt32 ReadWrite{0x4};
-
-  constexpr Int PageSize{0x1000};
-
   Void releaseMemory() noexcept
   {
     ;
   }
 
   template <typename Type>
-  [[msvc::forceinline]] [[nodiscard]] constexpr UInt64 alignUpPage(Type value) noexcept {
+  [[msvc::forceinline]] [[nodiscard]] constexpr UInt64 alignUpPage(Type value) noexcept
+  {
     return (UInt64)(value) + 0xfff & 0xfffffffffffff000;
   }
 
   template <typename Type>
-  [[msvc::forceinline]] [[nodiscard]] constexpr UInt64 alignDownPage(Type value) noexcept {
+  [[msvc::forceinline]] [[nodiscard]] constexpr UInt64 alignDownPage(Type value) noexcept
+  {
     return (UInt64)(value) & 0xfffffffffffff000;
   }
 

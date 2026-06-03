@@ -7,7 +7,7 @@ import :String;
 
 namespace Atl
 {
-  template<StringLiteral name, Size size_>
+  template <StringLiteral name, Size size_>
   class Digest final: public Array<UInt32, size_>
   {
   public:
@@ -42,7 +42,7 @@ namespace Atl
 
   export
   {
-    template<StringLiteral name, Size size_>
+    template <StringLiteral name, Size size_>
     constexpr std::ostream& operator<<(std::ostream& out, const Digest<name, size_>& digest) noexcept
     {
       return out << digest.toString();

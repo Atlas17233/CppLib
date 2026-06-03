@@ -25,10 +25,10 @@ namespace Atl
 
   export
   {
-    constexpr UInt8 hex[0x10]{ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-    constexpr UInt8 HEX[0x10]{ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+    constexpr UInt8 hex[0x10]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+    constexpr UInt8 HEX[0x10]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
-    template<StandardUnsignedIntegral Type>
+    template <StandardUnsignedIntegral Type>
     [[msvc::forceinline]] [[nodiscard]] constexpr Type rotL(Type data, Int n) noexcept
     {
       if !consteval {
@@ -46,7 +46,7 @@ namespace Atl
       return data << n | data >> (sizeof(Type) << 3) - n;
     }
 
-    template<StandardUnsignedIntegral Type>
+    template <StandardUnsignedIntegral Type>
     [[msvc::forceinline]] [[nodiscard]] constexpr Type rotR(Type data, Int n) noexcept
     {
       if !consteval {
@@ -112,7 +112,7 @@ namespace Atl
       }
     }
 
-    template<typename To, typename From>
+    template <typename To, typename From>
     requires (sizeof(To) == sizeof(From) && isTriviallyCopyable<To> && isTriviallyCopyable<From>)
     [[msvc::forceinline]] [[nodiscard]] constexpr To bitCast(const From& value) noexcept
     {

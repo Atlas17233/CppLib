@@ -77,16 +77,15 @@ static constexpr Atl::Void process(Atl::UInt32 digest[4], const Atl::UInt32 m[16
   round(F4, 3, 0, 1, 2, 0xbd3af235, 11, 10);
   round(F4, 2, 3, 0, 1, 0x2ad7d2bb,  2, 15);
   round(F4, 1, 2, 3, 0, 0xeb86d391,  9, 21);
-  for (Atl::Int i{0}; i < 4; ++i)
-  {
+  for (Atl::Int i{0}; i < 4; ++i) {
     digest[i] += h[i];
   }
 }
 
-template<>
+template <>
 constexpr Atl::UInt32 Atl::MD5::initValue[4]{0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476};
 
-template<>
+template <>
 const Atl::MD5& Atl::MD5::operator()(const UInt8* data, Size size) noexcept
 {
   init();

@@ -4,7 +4,7 @@ import :Def;
 
 namespace Atl
 {
-  /*template<typename Type, Size size_>
+  /*template <typename Type, Size size_>
   class ConstArrayIterator
   {
   public:
@@ -30,7 +30,7 @@ namespace Atl
     const Type* _ptr;
   };
 
-  template<typename Type, Size size_>
+  template <typename Type, Size size_>
   class ArrayIterator
   {
   public:
@@ -59,7 +59,8 @@ namespace Atl
 */
   export
   {
-    template <typename Type, Size size_> requires(size_ > 0)
+    template <typename Type, Size size_>
+    requires (size_ > 0)
     class Array
     {
     public:

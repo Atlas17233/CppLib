@@ -2,10 +2,10 @@ module Atl:Digest.CRC32;
 
 import :Digest;
 
-template<>
+template <>
 constexpr Atl::UInt32 Atl::CRC32::initValue[1]{0xffffffff};
 
-template<>
+template <>
 const Atl::CRC32& Atl::CRC32::operator()(const UInt8* data, Size size) noexcept
 {
   static constexpr UInt32 table[256]{

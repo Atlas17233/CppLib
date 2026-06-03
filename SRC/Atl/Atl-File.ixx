@@ -2,8 +2,7 @@ export module Atl:File;
 
 import :Def;
 import :String;
-
-import <windows.h>;
+import :Windows;
 
 namespace Atl
 {
@@ -16,11 +15,11 @@ namespace Atl
         Data<const Void>{nullptr, std::filesystem::file_size(path)}
       {
         if (size_) {
-          file_ = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-          if (file_ != INVALID_HANDLE_VALUE) {
-            mapping_ = CreateFileMappingW(file_, NULL, PAGE_READONLY, 0, 0, NULL);
+          file_ = CreateFileW(path.c_str(), GenericRead, FileShareRead, nullptr, OpenExisting, FileAttributeNormal, nullptr);
+          if (file_ != InvalidHandleValue) {
+            mapping_ = CreateFileMappingW(file_, nullptr, Read, 0, 0, nullptr);
             if (mapping_) {
-              data_ = MapViewOfFile(mapping_, FILE_MAP_READ, 0, 0, 0);
+              data_ = MapViewOfFile(mapping_, FileMapRead, 0, 0, 0);
               if (data_) {
                 return;
               }
@@ -43,8 +42,8 @@ namespace Atl
       constexpr operator ConstString() const noexcept { return ConstString{(const Char*)data_, size_}; }
 
     private:
-      HANDLE file_;
-      HANDLE mapping_;
+      Void* file_;
+      Void* mapping_;
     };
   }
 }

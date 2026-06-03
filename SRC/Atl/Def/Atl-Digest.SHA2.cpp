@@ -87,18 +87,17 @@ static constexpr Atl::Void process(Atl::UInt32 digest[8], const Atl::UInt32 chun
   round(3, 4, 5, 6, 7, 0, 1, 2, 0xa4506ceb, extend(14,  6, 11, 13));
   round(2, 3, 4, 5, 6, 7, 0, 1, 0xbef9a3f7, extend(15,  7, 12, 14));
   round(1, 2, 3, 4, 5, 6, 7, 0, 0xc67178f2, extend( 0,  8, 13, 15));
-  for (Atl::Int i{0}; i < 8; ++i)
-  {
+  for (Atl::Int i{0}; i < 8; ++i) {
     digest[i] += h[i];
   }
 }
 
-template<>
+template <>
 constexpr Atl::UInt32 Atl::SHA256::initValue[8]{
   0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
 };
 
-template<>
+template <>
 const Atl::SHA256& Atl::SHA256::operator()(const UInt8* data, Size size) noexcept
 {
   init();
@@ -121,8 +120,7 @@ const Atl::SHA256& Atl::SHA256::operator()(const UInt8* data, Size size) noexcep
   }
   ((Size*)buffer)[7] = swapByte(size << 3);
   process(data_, (UInt32*)buffer);
-  for (Int i{0}; i < 8; ++i)
-  {
+  for (Int i{0}; i < 8; ++i) {
     data_[i] = swapByte(data_[i]);
   }
   return *this;

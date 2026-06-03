@@ -43,6 +43,8 @@ Atl::Int Main(Atl::Int argc, Atl::Char *argv[])
       m = std::abs((Atl::Int64)(cs[i] - cs[i - 1])) < m ? std::abs((Atl::Int64)(cs[i] - cs[i - 1])) : m;
     }
     std::cout << m << "\n---------------\n";
+    Atl::SpaceAllocator::Chunk a;
+    a.realloc(nullptr, 1, 1);
   }
   catch (const Atl::Exception &error)
   {

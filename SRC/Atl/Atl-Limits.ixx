@@ -8,9 +8,9 @@ namespace Atl
   export
   {
     template <typename Type>
-    constexpr Type Min = isUnsigned<Type> ? 0 : 1 << sizeof(Type) * 8 - 1;
+    constexpr Type Min{isSigned<Type> ? 1 << sizeof(Type) * 8 - 1 : 0};
 
     template <typename Type>
-    constexpr Type Max = ~Min<Type>;
+    constexpr Type Max{~Min<Type>};
   }
 }

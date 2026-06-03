@@ -14,7 +14,9 @@ namespace Atl
         return strlen(str);
       } else {
         const Char* end = str;
-        while (*end) ++end;
+        while (*end) {
+          ++end;
+        }
         return end - str;
       }
     }
@@ -26,11 +28,11 @@ namespace Atl
       constexpr ConstString(const Char* str) noexcept: ConstString{str, getSize(str)} {}
     };
 
-    template<Size size_>
+    template <Size size_>
     struct StringLiteral final
     {
       consteval StringLiteral(const Char (&str)[size_]) noexcept { copy(str, size_ - 1, data_); }
-      [[nodiscard]] consteval operator ConstString() const noexcept { return ConstString{data_, size_ - 1}; }
+      consteval operator ConstString() const noexcept { return ConstString{data_, size_ - 1}; }
 
       Char data_[size_ - 1];
     };
