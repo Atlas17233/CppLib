@@ -115,28 +115,6 @@ namespace Atl
           Node* r;
         };
 
-        /*SplitLR splitP2(UInt8 pKey) noexcept
-        {
-          Node* node{((Node**)nodes_)[1]};
-          Node* l{nodes_};
-          Node* r{nodes_};
-          *(UInt32*)nodes_ = 0;
-          while (node != nodes_) {
-            if (node->pKey < pKey) {
-              l->pR = node->index;
-              l = node;
-              node = nodes_ + node->pR;
-              l->pR = 0;
-            } else {
-              r->pL = node->index;
-              r = node;
-              node = nodes_ + node->pL;
-              r->pL = 0;
-            }
-          }
-          return {nodes_ + nodes_->pR, nodes_ + nodes_->pL};
-        }*/
-
         SplitLR splitC2(Node* node, UInt16 index) noexcept
         {
           Node* l{nodes_};
@@ -217,28 +195,6 @@ namespace Atl
           return {nodes_ + nodes_->pR, m, nodes_ + nodes_->pL};
         }
 
-        [[msvc::forceinline]] Void mergeP(Node* l, Node* r, UInt16* node) noexcept
-        {
-          while (l != nodes_ && r != nodes_) {
-            if (l->pPriority > r->pPriority) {
-              *node = l->index;
-              node = &l->pR;
-              l = nodes_ + l->pR;
-            } else {
-              *node = r->index;
-              node = &r->pL;
-              r = nodes_ + r->pL;
-            }
-          }
-          *node = l->index + r->index;
-          ((Node**)nodes_)[1] = nodes_ + nodes_->pL;
-        }
-
-        /*Void mergeP2(Node* l, Node* r) noexcept
-        {
-          mergeP(l, r, (UInt16*)nodes_);
-        }*/
-
         Void mergeP3(Node* l, Node* m, Node* r) noexcept
         {
           UInt16* node{(UInt16*)nodes_};
@@ -277,10 +233,22 @@ namespace Atl
               l = m;
             }
           }
-          mergeP(l, r, node);
+          while (l != nodes_ && r != nodes_) {
+            if (l->pPriority > r->pPriority) {
+              *node = l->index;
+              node = &l->pR;
+              l = nodes_ + l->pR;
+            } else {
+              *node = r->index;
+              node = &r->pL;
+              r = nodes_ + r->pL;
+            }
+          }
+          *node = l->index + r->index;
+          ((Node**)nodes_)[1] = nodes_ + nodes_->pL;
         }
 
-        Node* mergeC(Node* l, Node* r, UInt16* node) noexcept
+        [[msvc::forceinline]] Node* mergeC(Node* l, Node* r, UInt16* node) noexcept
         {
           while (l != nodes_ && r != nodes_) {
             if (l->cPriority < r->cPriority) {
