@@ -8,10 +8,10 @@ namespace Atl
 {
   template <typename Type>
   [[nodiscard]] constexpr Int lZero(Type value) noexcept {
-    Type v = 0;
+    Type v;
 
-    UInt32 n = sizeof(Type) << 3;
-    UInt32 c = sizeof(Type) << 2;
+    UInt32 n{sizeof(Type) << 3};
+    UInt32 c{sizeof(Type) << 2};
     do {
       v = value >> c;
       if (v) {

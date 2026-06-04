@@ -34,7 +34,7 @@ namespace Atl
 
     using Int = Int32;
 
-    using DiffPtr = Int64;
+    using PtrDiff = Int64;
 
     using Size = UInt64;
     constexpr Size KiB{0x400};

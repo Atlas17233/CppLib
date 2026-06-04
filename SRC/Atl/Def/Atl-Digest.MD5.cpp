@@ -99,9 +99,9 @@ const Atl::MD5& Atl::MD5::operator()(const UInt8* data, Size size) noexcept
     copy(i, counter, buffer);
   }
   buffer[counter] = 0x80;
-  if (++counter <= 56) [[likely]] {
+  if (++counter <= 56) {
     fill(buffer + counter, 56 - counter, 0);
-  } else [[unlikely]] {
+  } else {
     fill(buffer + counter, 64 - counter, 0);
     process(data_, (UInt32*)buffer);
     fill(buffer, 56, 0);

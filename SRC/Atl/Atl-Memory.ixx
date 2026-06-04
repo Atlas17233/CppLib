@@ -11,20 +11,20 @@ namespace Atl
   }
 
   template <typename Type>
-  [[msvc::forceinline]] [[nodiscard]] constexpr UInt64 alignUpPage(Type value) noexcept
+  [[msvc::forceinline]] [[nodiscard]] constexpr Type alignUpPage(Type value) noexcept
   {
-    return (UInt64)(value) + 0xfff & 0xfffffffffffff000;
+    return (Type)((UInt64)value + 0xfff & 0xfffffffffffff000);
   }
 
   template <typename Type>
-  [[msvc::forceinline]] [[nodiscard]] constexpr UInt64 alignDownPage(Type value) noexcept
+  [[msvc::forceinline]] [[nodiscard]] constexpr Type alignDownPage(Type value) noexcept
   {
-    return (UInt64)(value) & 0xfffffffffffff000;
+    return (Type)((UInt64)value & 0xfffffffffffff000);
   }
 
   export {
     template <typename Type>
-    [[msvc::forceinline]] [[nodiscard]] Type* alloc(Size size) noexcept
+    [[msvc::forceinline]] [[nodiscard]] Type* allocate(Size size) noexcept
     {
       Type* memory{(Type*)VirtualAlloc(nullptr, size * sizeof(Type), Alloc, ReadWrite)};
       if (!memory) [[unlikely]] {
@@ -35,7 +35,7 @@ namespace Atl
     }
 
     template <typename Type>
-    [[msvc::forceinline]] [[nodiscard]] Type* realloc(Type* memory, Size size, Size newSize) noexcept
+    [[msvc::forceinline]] [[nodiscard]] Type* reallocate(Type* memory, Size size, Size newSize) noexcept
     {
       Size sizeAllocated{alignUpPage(size * sizeof(Type))};
       Size sizeRequired{newSize * sizeof(Type)};
@@ -66,7 +66,7 @@ namespace Atl
       VirtualAlloc(page, n, Commit, ReadWrite);
     }
 
-    [[msvc::forceinline]] Void dealloc(Void* memory) noexcept
+    [[msvc::forceinline]] Void deallocate(Void* memory) noexcept
     {
       VirtualFree(memory, 0, Release);
     }

@@ -11,22 +11,16 @@ namespace Atl
     class File final: private Data<const Void>
     {
     public:
-      explicit File(const std::filesystem::path& path) noexcept:
-        Data<const Void>{nullptr, std::filesystem::file_size(path)}
+      explicit File(const std::filesystem::path& path) noexcept: Data<const Void>{nullptr, std::filesystem::file_size(path)}
       {
-        if (size_) {
-          file_ = CreateFileW(path.c_str(), GenericRead, FileShareRead, nullptr, OpenExisting, FileAttributeNormal, nullptr);
-          if (file_ != InvalidHandleValue) {
-            mapping_ = CreateFileMappingW(file_, nullptr, Read, 0, 0, nullptr);
-            if (mapping_) {
-              data_ = MapViewOfFile(mapping_, FileMapRead, 0, 0, 0);
-              if (data_) {
-                return;
-              }
-              CloseHandle(mapping_);
+        if (size_ && (file_ = createFile(path.c_str(), GenericRead, FileShareRead, nullptr, OpenExisting))) {
+          if (mapping_ = CreateFileMappingW(file_, nullptr, Read, 0, 0, nullptr)) {
+            if (data_ = MapViewOfFile(mapping_, FileMapRead, 0, 0, 0)) {
+              return;
             }
-            CloseHandle(file_);
+            closeHandle(mapping_);
           }
+          closeHandle(file_);
         }
       }
 
@@ -34,8 +28,8 @@ namespace Atl
       {
         if (data_) {
           UnmapViewOfFile(data_);
-          CloseHandle(mapping_);
-          CloseHandle(file_);
+          closeHandle(mapping_);
+          closeHandle(file_);
         }
       }
 

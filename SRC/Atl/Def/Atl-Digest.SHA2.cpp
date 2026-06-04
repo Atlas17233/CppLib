@@ -21,7 +21,8 @@ import <stdlib.h>;
 
 static constexpr Atl::Void process(Atl::UInt32 digest[8], const Atl::UInt32 chunk[16]) noexcept
 {
-  Atl::UInt32 h[8], w[16];
+  Atl::UInt32 h[8];
+  Atl::UInt32 w[16];
   Atl::copy(digest, 8, h);
   round(0, 1, 2, 3, 4, 5, 6, 7, 0x428a2f98, convertLittleToBig( 0));
   round(7, 0, 1, 2, 3, 4, 5, 6, 0x71374491, convertLittleToBig( 1));
@@ -111,9 +112,9 @@ const Atl::SHA256& Atl::SHA256::operator()(const UInt8* data, Size size) noexcep
     copy(i, counter, buffer);
   }
   buffer[counter] = 0x80;
-  if (++counter <= 56) [[likely]] {
+  if (++counter <= 56) {
     fill(buffer + counter, 56 - counter, 0);
-  } else [[unlikely]] {
+  } else {
     fill(buffer + counter, 64 - counter, 0);
     process(data_, (UInt32*)buffer);
     fill(buffer, 56, 0);
