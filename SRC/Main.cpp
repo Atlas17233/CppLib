@@ -43,8 +43,14 @@ Atl::Int Main(Atl::Int argc, Atl::Char *argv[])
       m = std::abs((Atl::Int64)(cs[i] - cs[i - 1])) < m ? std::abs((Atl::Int64)(cs[i] - cs[i - 1])) : m;
     }
     std::cout << m << "\n---------------\n";
-    Atl::CompactAllocator a;
-    a.allocate(1);
+    int count{};
+    for (int i{}; i < 10000; ++i) {
+      Atl::Void* mem{virtualAlloc(nullptr, 256 * Atl::GiB, Atl::Reserve, Atl::PageReadWrite)};
+      if (mem) {
+        ++count;
+      }
+    }
+    std::cout << count << "\n---------------\n";
   }
   catch (const Atl::Exception &error)
   {

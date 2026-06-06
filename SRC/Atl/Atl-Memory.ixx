@@ -5,6 +5,8 @@ import :Windows;
 
 namespace Atl
 {
+  constexpr UInt32 Capacity{0x200000};
+
   Void releaseMemory() noexcept
   {
     ;
@@ -22,53 +24,64 @@ namespace Atl
     return (Type)((UInt64)value & 0xfffffffffffff000);
   }
 
-  export {
-    template <typename Type>
-    [[msvc::forceinline]] [[nodiscard]] Type* allocate(Size size) noexcept
-    {
-      Type* memory{(Type*)VirtualAlloc(nullptr, size * sizeof(Type), Alloc, ReadWrite)};
-      if (!memory) [[unlikely]] {
-        releaseMemory();
-        return (Type*)VirtualAlloc(nullptr, size * sizeof(Type), Alloc, ReadWrite);
-      }
-      return memory;
-    }
+  template <typename Type>
+  [[msvc::forceinline]] [[nodiscard]] constexpr Type alignUpGranularity(Type value) noexcept
+  {
+    return (Type)((UInt64)value + 0xffff & 0xffffffffffff0000);
+  }
 
-    template <typename Type>
-    [[msvc::forceinline]] [[nodiscard]] Type* reallocate(Type* memory, Size size, Size newSize) noexcept
-    {
-      Size sizeAllocated{alignUpPage(size * sizeof(Type))};
-      Size sizeRequired{newSize * sizeof(Type)};
-      if (sizeAllocated < sizeRequired) {
-        Type* newMemory{(Type*)VirtualAlloc(nullptr, sizeRequired, Alloc, ReadWrite)};
-        if (!newMemory) [[unlikely]] {
-          releaseMemory();
-          newMemory = (Type*)VirtualAlloc(nullptr, sizeRequired, Alloc, ReadWrite);
-        }
-        //!!!!!!!!!!!!!!!!check move or copy
-        memcpy(newMemory, memory, size);
-        VirtualFree(memory, 0, Release);
-        return newMemory;
-      }
-      Size sizeUsed{alignUpPage(sizeRequired)};
-      Size sizeUnused{sizeAllocated - sizeUsed};
-      if (sizeUnused) {
-        Void* baseAddr{(UInt64)memory + sizeUsed};
-        VirtualFree(baseAddr, sizeUnused, Decommit);
-        VirtualAlloc(baseAddr, sizeUnused, Commit, ReadWrite);
-      }
-      return memory;
-    }
+  template <typename Type>
+  [[msvc::forceinline]] [[nodiscard]] constexpr Type alignDownGranularity(Type value) noexcept
+  {
+    return (Type)((UInt64)value & 0xffffffffffff0000);
+  }
 
-    [[msvc::forceinline]] Void releasePage(Void* page, Size n) noexcept
-    {
-      VirtualFree(page, n, Decommit);
-      VirtualAlloc(page, n, Commit, ReadWrite);
-    }
+  [[msvc::forceinline]] [[nodiscard]] Void* reserve(Size size) noexcept
+  {
+    return virtualAlloc(nullptr, size, Reserve, PageReadWrite);
+  }
 
-    [[msvc::forceinline]] Void deallocate(Void* memory) noexcept
-    {
-      VirtualFree(memory, 0, Release);
+  [[msvc::forceinline]] Void commit(Void* memory, Size size) noexcept
+  {
+    if (!virtualAlloc(memory, size, Commit, PageReadWrite)) [[unlikely]] {
+      releaseMemory();
+      virtualAlloc(memory, size, Commit, PageReadWrite);
     }
+  }
+
+  [[msvc::forceinline]] Void decommit(Void* memory, Size size) noexcept
+  {
+    virtualFree(memory, size, Decommit);
+  }
+
+  [[msvc::forceinline]] Void release(Void* memory) noexcept
+  {
+    virtualFree(memory, 0, Release);
+  }
+
+  [[msvc::forceinline]] [[nodiscard]] Void* alloc(Size size) noexcept
+  {
+    Void* memory{virtualAlloc(nullptr, size, Alloc, PageReadWrite)};
+    if (!memory) [[unlikely]] {
+      releaseMemory();
+      return virtualAlloc(nullptr, size, Alloc, PageReadWrite);
+    }
+    return memory;
+  }
+
+  [[msvc::forceinline]] Void recommit(Void* memory, Size size) noexcept
+  {
+    decommit(memory, size);
+    commit(memory, size);
+  }
+
+  [[msvc::forceinline]] [[nodiscard]] Void* realloc(Void* memory, Void* capacity, Void* newCapacity) noexcept
+  {
+    capacity = alignUpPage(capacity);
+    newCapacity = alignUpPage(newCapacity);
+    if (capacity > newCapacity) {
+      recommit(newCapacity, (UInt64)capacity - (UInt64)newCapacity);
+    }
+    return capacity;
   }
 }

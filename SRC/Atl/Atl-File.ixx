@@ -8,14 +8,14 @@ namespace Atl
 {
   export
   {
-    class File final: private Data<const Void>
+    class File final
     {
     public:
-      explicit File(const std::filesystem::path& path) noexcept: Data<const Void>{nullptr, std::filesystem::file_size(path)}
+      explicit File(const std::filesystem::path& path) noexcept: data_{nullptr}, size_{std::filesystem::file_size(path)}
       {
-        if (size_ && (file_ = createFile(path.c_str(), GenericRead, FileShareRead, nullptr, OpenExisting))) {
-          if (mapping_ = CreateFileMappingW(file_, nullptr, Read, 0, 0, nullptr)) {
-            if (data_ = MapViewOfFile(mapping_, FileMapRead, 0, 0, 0)) {
+        if (size_ && (file_ = createFile(path, GenericRead, FileShareRead, nullptr, OpenExisting))) {
+          if (mapping_ = createFileMapping(file_, nullptr, PageRead, 0, 0, nullptr)) {
+            if (data_ = mapViewOfFile(mapping_, FileMapRead, 0, 0, 0)) {
               return;
             }
             closeHandle(mapping_);
@@ -27,7 +27,7 @@ namespace Atl
       constexpr ~File() noexcept
       {
         if (data_) {
-          UnmapViewOfFile(data_);
+          unmapViewOfFile(data_);
           closeHandle(mapping_);
           closeHandle(file_);
         }
@@ -36,6 +36,8 @@ namespace Atl
       constexpr operator ConstString() const noexcept { return ConstString{(const Char*)data_, size_}; }
 
     private:
+      const Void* data_;
+      Size size_;
       Void* file_;
       Void* mapping_;
     };

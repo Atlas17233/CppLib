@@ -7,21 +7,38 @@ import :Memory;
 
 namespace Atl
 {
-  export
+  class CompactBaseAllocator
   {
-    template <typename Type, typename SizeType = Size>
-    using Memory = Data<Type, SizeType>;
-
-    template <typename Type>
-    class LargeAllocator final
+    class LargeAllocator
     {
     public:
-      [[nodiscard]] Type* allocate(Size size) noexcept { return alloc<Type>(size); }
-      [[nodiscard]] Type* reallocate(Type* memory, Size size, Size newSize) noexcept { return realloc(memory, size, newSize); }
-      Void deallocate(Type* memory) noexcept { dealloc(memory); }
+      [[nodiscard]] static Void* allocate(Size size) noexcept
+      {
+        return alloc(alignUpGranularity(size));
+      }
+
+      [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
+      {
+        return alignUpGranularity(capacity);
+      }
+
+      [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
+      {
+        capacity = alignUpPage(capacity);
+        newCapacity = alignUpPage(newCapacity);
+        if (capacity > newCapacity) {
+          recommit(newCapacity, (UInt64)capacity - (UInt64)newCapacity);
+        }
+        return capacity;
+      }
+
+      static Void deallocate(Void* memory, Void* capacity) noexcept
+      {
+        release(memory);
+      }
     };
 
-    class CompactAllocator
+    class SmallAllocator
     {
       class Chunk
       {
@@ -30,6 +47,8 @@ namespace Atl
         {
           UInt16 pL;
           UInt16 pR;
+          UInt16 cL;
+          UInt16 cR;
           UInt16 index;
           UInt16 size;
           UInt8 pKey;
@@ -38,29 +57,27 @@ namespace Atl
             UInt16 cPriority;
             UInt8 pagePriority;
           };
-          UInt16 cL;
-          UInt16 cR;
 
-          [[msvc::forceinline]] Void makeFirst() noexcept
+          [[msvc::forceinline]] Void makeFirst(UInt16 i) noexcept
           {
-            index = 1;
-            size = 0xffff;
+            index = i;
+            size = 0x10000 - i;
             pKey = 0xff;
-            pagePriority = 0xc0;
+            pagePriority = priority[i];
           }
 
           [[msvc::forceinline]] Void init(UInt16 i, UInt16 s) noexcept
           {
             pL = 0;
             pR = 0;
+            cL = 0;
+            cR = 0;
             index = i;
             size = s;
             pKey = s <= 0xff ? s : 0xff;
             pPriority = _tzcnt_u32(pKey);
             cPriority = i;
             pagePriority = priority[i & 0xff];
-            cL = 0;
-            cR = 0;
             if (s > 1 && i + s < 0x10000) {
               this[s - 1].index = i;
               this[s - 1].size = s;
@@ -115,34 +132,13 @@ namespace Atl
           Node* r;
         };
 
-        SplitLR splitC2(Node* node, UInt16 index) noexcept
-        {
-          Node* l{nodes_};
-          Node* r{nodes_};
-          *(UInt32*)nodes_ = 0;
-          while (node != nodes_) {
-            if (node->index < index) {
-              l->cR = node->index;
-              l = node;
-              node = nodes_ + node->cR;
-              l->cR = 0;
-            } else {
-              r->cL = node->index;
-              r = node;
-              node = nodes_ + node->cL;
-              r->cL = 0;
-            }
-          }
-          return {nodes_ + nodes_->pR, nodes_ + nodes_->pL};
-        }
-
         SplitLMR splitP3(UInt8 pKey) noexcept
         {
-          Node* node{((Node**)nodes_)[1]};
+          Node* node{nodes_ + nodes_->cPriority};
           Node* l{nodes_};
           Node* m{nodes_};
           Node* r{nodes_};
-          *(UInt32*)nodes_ = 0;
+          *(UInt64*)nodes_ = 0;
           while (node != nodes_) {
             if (node->pKey == pKey) {
               l->pR = node->pL;
@@ -166,12 +162,33 @@ namespace Atl
           return {nodes_ + nodes_->pR, m, nodes_ + nodes_->pL};
         }
 
+        SplitLR splitC2(Node* node, UInt16 index) noexcept
+        {
+          Node* l{nodes_};
+          Node* r{nodes_};
+          *(UInt64*)nodes_ = 0;
+          while (node != nodes_) {
+            if (node->index < index) {
+              l->cR = node->index;
+              l = node;
+              node = nodes_ + node->cR;
+              l->cR = 0;
+            } else {
+              r->cL = node->index;
+              r = node;
+              node = nodes_ + node->cL;
+              r->cL = 0;
+            }
+          }
+          return {nodes_ + nodes_->cR, nodes_ + nodes_->cL};
+        }
+
         SplitLMR splitC3(Node* node, UInt16 index) noexcept
         {
           Node* l{nodes_};
           Node* m{nodes_};
           Node* r{nodes_};
-          *(UInt32*)nodes_ = 0;
+          *(UInt64*)nodes_ = 0;
           while (node != nodes_) {
             if (node->index == index) {
               m = node;
@@ -192,12 +209,12 @@ namespace Atl
               r->cL = 0;
             }
           }
-          return {nodes_ + nodes_->pR, m, nodes_ + nodes_->pL};
+          return {nodes_ + nodes_->cR, m, nodes_ + nodes_->cL};
         }
 
         Void mergeP3(Node* l, Node* m, Node* r) noexcept
         {
-          UInt16* node{(UInt16*)nodes_};
+          UInt16* node{&nodes_->cPriority};
           if (m != nodes_) {
             if (l != nodes_) {
               if (r != nodes_) {
@@ -218,7 +235,6 @@ namespace Atl
                   *node = m->index;
                   m->pL = l->index;
                   m->pR = r->index;
-                  ((Node**)nodes_)[1] = nodes_ + nodes_->pL;
                   return;
                 } while (l != nodes_ && m != nodes_ && r != nodes_);
                 if (l == nodes_) {
@@ -245,7 +261,6 @@ namespace Atl
             }
           }
           *node = l->index + r->index;
-          ((Node**)nodes_)[1] = nodes_ + nodes_->pL;
         }
 
         [[msvc::forceinline]] Node* mergeC(Node* l, Node* r, UInt16* node) noexcept
@@ -312,7 +327,7 @@ namespace Atl
 
         Bool isFree(UInt16 index, UInt16 size) noexcept
         {
-          Node* node{((Node**)nodes_)[1]};
+          Node* node{nodes_ + nodes_->cPriority};
           while (node != nodes_) {
             if (node->pKey == size) {
               while (node != nodes_) {
@@ -334,29 +349,38 @@ namespace Atl
           return false;
         }
 
-        UInt16 alignUpNode(Size size) noexcept { return size + 0xf >> 4; }
+        UInt16 alignUpNode(UInt16 size) noexcept { return size + 0xf >> 4; }
 
         Node* alignUpNode(Node* node) noexcept { return (Node*)((UInt64)node + 0xf & 0xfffffffffffffff0); }
 
       public:
-        [[msvc::forceinline]] Chunk() noexcept: nodes_{Atl::allocate<Node>(1_MiB)}
+        [[msvc::forceinline]] Void operator=(Chunk& chunk) noexcept
         {
-          ((Node**)nodes_)[1] = nodes_ + 1;
-          nodes_->size = 0xff;
-          nodes_[1].makeFirst();
+          nodes_ = chunk.nodes_;
+          chunk.nodes_ = nullptr;
         }
 
-        ~Chunk() noexcept { Atl::deallocate(nodes_); }
+        [[msvc::forceinline]] operator Bool() noexcept { return nodes_; }
 
-        Bool hasSize(Size size) noexcept { return alignUpNode(size) <= nodes_->size; }
+        [[msvc::forceinline]] Bool hasSize(UInt16 size) noexcept { return !nodes_ || alignUpNode(size) <= nodes_->pKey; }
 
-        Bool has(Void* memory) noexcept { return nodes_ < memory && memory < nodes_ + 0x10000; }
+        [[msvc::forceinline]] Bool has(Void* memory) noexcept
+        {
+          return nodes_ && nodes_ < memory && memory < nodes_ + 0x10000;
+        }
 
-        Node* allocate(Size size) noexcept
+        Node* allocate(UInt16 size) noexcept
         {
           size = alignUpNode(size);
+          if (!nodes_) {
+            nodes_ = (Node*)alloc(1_MiB);
+            nodes_->pKey = 0xff;
+            nodes_->cPriority = ++size;
+            nodes_[size].makeFirst(size);
+            return nodes_ + 1;
+          }
           UInt8 pKey;
-          Node* node{((Node**)nodes_)[1]};
+          Node* node{nodes_ + nodes_->cPriority};
           while (node != nodes_)
           {
             if (node->pKey >= size) {
@@ -369,7 +393,7 @@ namespace Atl
           SplitLMR pLMR{splitP3(pKey)};
           Node* memory{pLMR.m};
           pLMR.m = mergeC2(nodes_ + memory->cL, nodes_ + memory->cR);
-          Bool needResize{memory->pKey == nodes_->size && pLMR.m == nodes_};
+          Bool needResize{memory->pKey == nodes_->pKey && pLMR.m == nodes_};
           if (memory->size > size) {
             node = memory + size;
             node->init(memory->index + size, memory->size - size);
@@ -384,20 +408,20 @@ namespace Atl
           }
           mergeP3(pLMR.l, pLMR.m, pLMR.r);
           if (needResize) {
-            if (((Node**)nodes_)[1] != nodes_) {
-              node = ((Node**)nodes_)[1];
+            if (nodes_->cPriority) {
+              node = nodes_ + nodes_->cPriority;
               while (node->pR) {
                 node = nodes_ + node->pR;
               }
-              nodes_->size = node->pKey;
+              nodes_->pKey = node->pKey;
             } else {
-              nodes_->size = 0;
+              nodes_->pKey = 0;
             }
           }
           return memory;
         }
 
-        Node* reallocate(Node* memory, Node* capacity, Node* newCapacity) noexcept
+        Node* expand(Node* memory, Node* capacity, Node* newCapacity) noexcept
         {
           capacity = alignUpNode(capacity);
           newCapacity = alignUpNode(newCapacity);
@@ -405,7 +429,7 @@ namespace Atl
             SplitLMR pLMR{splitP3(capacity->pKey)};
             SplitLMR cLMR{splitC3(pLMR.m, capacity->index)};
             pLMR.m = mergeC2(cLMR.l, cLMR.r);
-            Bool needResize{capacity->pKey == nodes_->size && pLMR.m == nodes_};
+            Bool needResize{capacity->pKey == nodes_->pKey && pLMR.m == nodes_};
             if (capacity + capacity->size > newCapacity) {
               newCapacity->init(newCapacity - nodes_, capacity + capacity->size - newCapacity);
               if (newCapacity->size < 0xff) {
@@ -421,15 +445,15 @@ namespace Atl
             }
             mergeP3(pLMR.l, pLMR.m, pLMR.r);
             if (needResize) {
-              if (((Node**)nodes_)[1] != nodes_) {
-                Node* node{((Node**)nodes_)[1]};
+              if (nodes_->cPriority) {
+                Node* node{nodes_ + nodes_->cPriority};
                 while (node->pR)
                 {
                   node = nodes_ + node->pR;
                 }
-                nodes_->size = node->pKey;
+                nodes_->pKey = node->pKey;
               } else {
-                nodes_->size = 0;
+                nodes_->pKey = 0;
               }
             }
             return newCapacity;
@@ -446,6 +470,11 @@ namespace Atl
             Node* end;
             if (capacity - nodes_ < 0x10000) {
               if (isFree(capacity->index, capacity->pKey)) {
+                if (memory == newCapacity && memory == nodes_ + 1 && capacity->index + capacity->size == 0x10000) {
+                  release(nodes_);
+                  nodes_ = nullptr;
+                  return newCapacity;
+                }
                 SplitLMR pLMR{splitP3(capacity->pKey)};
                 SplitLMR cLMR{splitC3(pLMR.m, capacity->index)};
                 mergeP3(pLMR.l, mergeC2(cLMR.l, cLMR.r), pLMR.r);
@@ -458,11 +487,11 @@ namespace Atl
               end = capacity;
             }
             newCapacity->init(newCapacity - nodes_, capacity - newCapacity);
-            if (nodes_->size < newCapacity->pKey) {
-              nodes_->size = newCapacity->pKey;
+            if (nodes_->pKey < newCapacity->pKey) {
+              nodes_->pKey = newCapacity->pKey;
             }
             if (begin < end) {
-              releasePage(begin, end - begin);
+              recommit(begin, end - begin);
             }
             SplitLMR pLMR{splitP3(newCapacity->pKey)};
             SplitLR cLR{splitC2(pLMR.m, newCapacity->index)};
@@ -503,15 +532,20 @@ namespace Atl
             memory->init(memory - nodes_, capacity - memory);
             begin = alignUpPage(memory + 1);
           }
-          if (nodes_->size < memory->pKey) {
-            nodes_->size = memory->pKey;
+          if (memory->index == 1 && memory->size == 0xffff) {
+            release(nodes_);
+            nodes_ = nullptr;
+          } else {
+            if (nodes_->pKey < memory->pKey) {
+              nodes_->pKey = memory->pKey;
+            }
+            if (begin < end) {
+              recommit(begin, end - begin);
+            }
+            SplitLMR pLMR{splitP3(memory->pKey)};
+            SplitLR cLR{splitC2(pLMR.m, memory->index)};
+            mergeP3(pLMR.l, mergeC3(cLR.l, memory, cLR.r), pLMR.r);
           }
-          if (begin < end) {
-            releasePage(begin, end - begin);
-          }
-          SplitLMR pLMR{splitP3(memory->pKey)};
-          SplitLR cLR{splitC2(pLMR.m, memory->index)};
-          mergeP3(pLMR.l, mergeC3(cLR.l, memory, cLR.r), pLMR.r);
         }
 
         Void printTreeHorizontal(Node* r, Int depth = 0, const std::string& prefix = "")
@@ -527,48 +561,61 @@ namespace Atl
       };
 
     public:
-      Void* allocate(Size size) noexcept
+      [[nodiscard]] static Void* allocate(UInt16 size) noexcept
       {
         for (Chunk* i{chunks_}; i < end_; ++i) {
           if (i->hasSize(size)) {
             return i->allocate(size);
           }
         }
-        return (new(end_++) Chunk)->allocate(size);
+        return end_++->allocate(size);
       }
 
-      Void* reallocate(Void* memory, Void* capacity, Void* newCapacity) noexcept
+      [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
       {
         for (Chunk* i{chunks_}; i < end_; ++i) {
           if (i->has(memory)) {
-            return i->reallocate((Chunk::Node*)memory, (Chunk::Node*)capacity, (Chunk::Node*)newCapacity);
+            return i->expand((Chunk::Node*)memory, (Chunk::Node*)capacity, (Chunk::Node*)newCapacity);
           }
         }
         return capacity;
       }
 
-      Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
+      [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
       {
         for (Chunk* i{chunks_}; i < end_; ++i) {
           if (i->has(memory)) {
-            return i->shrink((Chunk::Node*)memory, (Chunk::Node*)capacity, (Chunk::Node*)newCapacity);
+            capacity = i->shrink((Chunk::Node*)memory, (Chunk::Node*)capacity, (Chunk::Node*)newCapacity);
+            if (!*i) {
+              if (i != --end_) {
+                *i = *end_;
+              }
+              if (!((UInt64)end_ & 0xfff)) {
+                recommit(end_, 0x1000);
+              }
+            }
+            return capacity;
           }
         }
         return capacity;
       }
 
-      Void deallocate(Void* memory, Void* capacity) noexcept
+      static Void deallocate(Void* memory, Void* capacity) noexcept
       {
         for (Chunk* i{chunks_}; i < end_; ++i) {
           if (i->has(memory)) {
-            return i->deallocate((Chunk::Node*)memory, (Chunk::Node*)capacity);
+            i->deallocate((Chunk::Node*)memory, (Chunk::Node*)capacity);
+            if (!*i) {
+              if (i != --end_) {
+                *i = *end_;
+              }
+              if (!((UInt64)end_ & 0xfff)) {
+                recommit(end_, 0x1000);
+              }
+            }
+            return;
           }
         }
-      }
-
-      Void releaseMemory() noexcept
-      {
-
       }
 
     private:
@@ -576,8 +623,80 @@ namespace Atl
       static Chunk* end_;
     };
 
-    CompactAllocator::Chunk* CompactAllocator::chunks_{Atl::allocate<Chunk>(0x40000)};
-    CompactAllocator::Chunk* CompactAllocator::end_{chunks_};
+  public:
+    [[nodiscard]] static Void* allocate(Size size) noexcept
+    {
+      if (size < 0x1000) {
+        return SmallAllocator::allocate(size);
+      } else {
+        return LargeAllocator::allocate(size);
+      }
+    }
+
+    [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
+    {
+      if ((UInt64)capacity - (UInt64)memory < 0x1000) {
+        return SmallAllocator::expand(memory, capacity, newCapacity);
+      } else {
+        return LargeAllocator::expand(memory, capacity, newCapacity);
+      }
+    }
+
+    [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
+    {
+      if ((UInt64)capacity - (UInt64)memory < 0x1000) {
+        return SmallAllocator::shrink(memory, capacity, newCapacity);
+      } else {
+        return LargeAllocator::shrink(memory, capacity, newCapacity);
+      }
+    }
+
+    static Void deallocate(Void* memory, Void* capacity) noexcept
+    {
+      if ((UInt64)capacity - (UInt64)memory < 0x1000) {
+        return SmallAllocator::deallocate(memory, capacity);
+      } else {
+        return LargeAllocator::deallocate(memory, capacity);
+      }
+    }
+  };
+
+  CompactBaseAllocator::SmallAllocator::Chunk* CompactBaseAllocator::SmallAllocator::chunks_{(Chunk*)alloc(0x200000)};
+  CompactBaseAllocator::SmallAllocator::Chunk* CompactBaseAllocator::SmallAllocator::end_{chunks_};
+
+  template <typename Type, typename Allocator>
+  class BaseAllocator
+  {
+  public:
+    [[nodiscard]] Type* allocate(Size size) noexcept
+    {
+      return Allocator::allocate(size * sizeof(Type));
+    }
+
+    [[nodiscard]] Type* expand(Type* memory, Type* capacity, Type* newCapacity) noexcept
+    {
+      return memory + (Allocator::expand(memory, capacity, newCapacity) - memory);
+    }
+
+    [[nodiscard]] Type* shrink(Type* memory, Type* capacity, Type* newCapacity) noexcept
+    {
+      return memory + (Allocator::shrink(memory, capacity, newCapacity) - memory);
+    }
+
+    Void deallocate(Type* memory, Type* capacity) noexcept
+    {
+      Allocator::deallocate(memory, capacity);
+    }
+  };
+
+  export
+  {
+    template <typename Type>
+    using CompactAllocator = BaseAllocator<Type, CompactBaseAllocator>;
+
+    template <typename Type>
+    using Allocator = CompactAllocator<Type>;
+
 /*
     template <Size sizeBlock>
     requires (sizeBlock < 8)
@@ -589,7 +708,7 @@ namespace Atl
         begin_ = malloc(nBlock * sizeBlock);
         end_ = block(nBlock--);
         Byte* p{begin_};
-        for (UInt8 i{0}; i < nBlock; p += sizeBlock) {
+        for (UInt8 i{}; i < nBlock; p += sizeBlock) {
           *p = ++i;
         }
         *p = Max<Byte>;
@@ -624,8 +743,8 @@ namespace Atl
     private:
       Byte* begin_{nullptr};
       Byte* end_{nullptr};
-      Int8 top_{0};
-      Int8 usedBlocks_{0};
+      Int8 top_{};
+      Int8 usedBlocks_{};
     };
 
     class FixedAllocator

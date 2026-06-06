@@ -29,7 +29,7 @@ namespace Atl
     {
       std::string result;
       result.reserve(size_ << 3);
-      for (Int i{0}; i < (size_ << 2); ++i) {
+      for (Int i{}; i < (size_ << 2); ++i) {
         result += table[((UInt8*)this)[i] >> 4];
         result += table[((UInt8*)this)[i] & 15];
       }
