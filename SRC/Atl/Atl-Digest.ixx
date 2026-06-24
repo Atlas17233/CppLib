@@ -11,7 +11,7 @@ namespace Atl
   class Digest final: public Array<UInt32, size_>
   {
   public:
-    explicit constexpr Digest(const ConstString& str) noexcept
+    [[msvc::forceinline]] explicit constexpr Digest(const ConstString& str) noexcept
     {
       operator()(str);
     }
@@ -25,7 +25,7 @@ namespace Atl
       return operator()((UInt8*)str.data(), str.size());
     }
 
-    [[nodiscard]] constexpr std::string toString(const UInt8 table[16] = hex) const noexcept
+    [[msvc::forceinline]] [[nodiscard]] constexpr std::string toString(const UInt8 table[16] = hex) const noexcept
     {
       std::string result;
       result.reserve(size_ << 3);
@@ -43,7 +43,7 @@ namespace Atl
   export
   {
     template <StringLiteral name, Size size_>
-    constexpr std::ostream& operator<<(std::ostream& out, const Digest<name, size_>& digest) noexcept
+    [[msvc::forceinline]] constexpr std::ostream& operator<<(std::ostream& out, const Digest<name, size_>& digest) noexcept
     {
       return out << digest.toString();
     }

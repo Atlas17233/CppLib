@@ -11,4 +11,4 @@ file(GLOB_RECURSE SRC_FILES
 
 add_executable(${CMAKE_PROJECT_NAME} ${SRC_FILES})
 
-target_compile_options(${CMAKE_PROJECT_NAME} PUBLIC /arch:AVX2)
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE /arch:AVX2)

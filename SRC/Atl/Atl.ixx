@@ -10,11 +10,13 @@ export import :Def;
 export import :Digest;
 export import :Exception;
 export import :File;
+export import :InitializerList;
 export import :Limits;
 export import :Math;
 export import :Memory;
 export import :String;
 export import :Type;
+export import :Vector;
 
 export
 {

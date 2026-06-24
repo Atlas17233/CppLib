@@ -6,7 +6,7 @@ import :Type;
 namespace Atl
 {
   template <typename Type>
-  [[nodiscard]] constexpr Bool isAllBitsZero(const Type& value) {
+  [[nodiscard]] constexpr Bool isZero(const Type& value) {
     if constexpr (isNullptr<Type>) {
       return true;
     } else if constexpr (isIntegral<Type> || isPointer<Type>) {
@@ -28,7 +28,7 @@ namespace Atl
   export
   {
     template <typename Iter1, typename Iter2>
-    [[nodiscard]] constexpr Int compare(Iter1 iter1, Iter2 iter2, Size size)
+    [[msvc::forceinline]] [[nodiscard]] constexpr Int compare(Iter1 iter1, Iter2 iter2, Size size)
     {
       if !consteval {
         if constexpr (sizeof(*iter1) == sizeof(*iter2)) {
@@ -50,9 +50,11 @@ namespace Atl
         if constexpr (sizeof(*begin) == 1) {
           memset(begin, value, end - begin);
           return end;
-        } else if (isZero(value)) {
-          memset(begin, 0, (const UInt8*)end - (const UInt8*)begin);
-          return end;
+        } else {
+          if (isZero(value)) {
+            memset(begin, 0, (UInt8*)end - (UInt8*)begin);
+            return end;
+          }
         }
       }
       while (begin < end) {
@@ -62,21 +64,24 @@ namespace Atl
     }
 
     template <typename Source, typename IterTarget>
-    constexpr IterTarget fill(IterTarget iTarget, Size size, const Source& value) noexcept
+    constexpr IterTarget fill(IterTarget begin, Size size, const Source& value) noexcept
     {
+      IterTarget end{begin + size};
       if !consteval {
-        if constexpr (sizeof(*iTarget) == 1) {
-          memset(iTarget, value, size);
-          return iTarget + size;
-        } else if (isZero(value)) {
-          memset(iTarget, 0, size * sizeof(*iTarget));
-          return iTarget + size * sizeof(*iTarget);
+        if constexpr (sizeof(*begin) == 1) {
+          memset(begin, value, size);
+          return end;
+        } else {
+          if (isZero(value)) {
+            memset(begin, 0, (UInt8*)end - (UInt8*)begin);
+            return end;
+          }
         }
       }
-      while (size--) {
-        *iTarget++ = value;
+      while (begin < end) {
+        *begin++ = value;
       }
-      return iTarget;
+      return end;
     }
 
     template <typename IterSource, typename IterTarget>
@@ -84,7 +89,7 @@ namespace Atl
     {
       if !consteval {
         if constexpr (sizeof(*begin) == sizeof(*iTarget)) {
-          memcpy(iTarget, begin, (const UInt8*)end - (const UInt8*)begin);
+          memcpy(iTarget, begin, (UInt8*)end - (UInt8*)begin);
           return iTarget + (end - begin);
         }
       }
@@ -95,16 +100,17 @@ namespace Atl
     }
 
     template <typename IterSource, typename IterTarget>
-    constexpr IterTarget copy(IterSource iSource, Size size, IterTarget iTarget) noexcept
+    constexpr IterTarget copy(IterSource begin, Size size, IterTarget iTarget) noexcept
     {
+      IterSource end{begin + size};
       if !consteval {
-        if constexpr (sizeof(*iSource) == sizeof(*iTarget)) {
-          memcpy(iTarget, iSource, size * sizeof(*iTarget));
+        if constexpr (sizeof(*begin) == sizeof(*iTarget)) {
+          memcpy(iTarget, begin, size * sizeof(*iTarget));
           return iTarget + size;
         }
       }
-      while (size--) {
-        *iTarget++ = *iSource++;
+      while (begin < end) {
+        *iTarget++ = *begin++;
       }
       return iTarget;
     }

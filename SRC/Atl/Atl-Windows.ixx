@@ -58,7 +58,9 @@ namespace Atl
       FileAttributeNormal = 0x80
     };
 
-    constexpr Int PageSize{0x1000};
+    constexpr Size PageSize{0x1000};
+
+    [[msvc::forceinline]] [[nodiscard]] constexpr Void* invalidHandle() noexcept { return (Void*)Max<UInt64>; }
 
     [[msvc::forceinline]] Void* virtualAlloc(Void* address, Size size, UInt32 allocationType, UInt32 protect) noexcept
     {
@@ -70,43 +72,22 @@ namespace Atl
       return VirtualFree(address, size, freeType);
     }
 
-    [[msvc::forceinline]] [[nodiscard]] Void* createFile(
-        const std::filesystem::path& fileName,
-        UInt32 desiredAccess,
-        UInt32 shareMode,
-        SecurityAttributes* securityAttributes,
-        UInt32 creationDisposition,
-        UInt32 flagsAndAttributes = FileAttributeNormal,
-        Void* templateFile = nullptr) noexcept
+    [[msvc::forceinline]] [[nodiscard]] Void* createFile(const std::filesystem::path& fileName,
+        UInt32 desiredAccess, UInt32 shareMode, SecurityAttributes* securityAttributes, UInt32 creationDisposition,
+        UInt32 flagsAndAttributes = FileAttributeNormal, Void* templateFile = nullptr) noexcept
     {
-      templateFile = CreateFileW(
-          fileName.c_str(),
-          desiredAccess,
-          shareMode,
-          securityAttributes,
-          creationDisposition,
-          flagsAndAttributes,
-          templateFile);
-      return templateFile != (Void*)Max<UInt64> ? templateFile : nullptr;
+      return CreateFileW(fileName.c_str(), desiredAccess, shareMode, securityAttributes, creationDisposition,
+          flagsAndAttributes, templateFile);
     }
 
-    [[msvc::forceinline]] [[nodiscard]] Void* createFileMapping(
-        Void* file,
-        SecurityAttributes* fileMappingAttributes,
-        UInt32 protect,
-        UInt32 maximumSizeHigh,
-        UInt32 maximumSizeLow,
-        const CharW* name) noexcept
+    [[msvc::forceinline]] [[nodiscard]] Void* createFileMapping(Void* file, SecurityAttributes* fileMappingAttributes, UInt32 protect,
+        UInt32 maximumSizeHigh, UInt32 maximumSizeLow, const CharW* name) noexcept
     {
       return CreateFileMappingW(file, fileMappingAttributes, protect, maximumSizeHigh, maximumSizeLow, name);
     }
 
-    [[msvc::forceinline]] [[nodiscard]] Void* mapViewOfFile(
-        Void* fileMappingObject,
-        UInt32 desiredAccess,
-        UInt32 fileOffsetHigh,
-        UInt32 fileOffsetLow,
-        Size numberOfBytesToMap) noexcept
+    [[msvc::forceinline]] [[nodiscard]] Void* mapViewOfFile(Void* fileMappingObject, UInt32 desiredAccess,
+        UInt32 fileOffsetHigh, UInt32 fileOffsetLow, Size numberOfBytesToMap) noexcept
     {
       return MapViewOfFile(fileMappingObject, desiredAccess, fileOffsetHigh, fileOffsetLow, numberOfBytesToMap);
     }

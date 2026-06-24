@@ -12,11 +12,13 @@ namespace Atl
     using ValueType = T;
     using Type = ConstIntegral;
 
-    constexpr operator ValueType() const noexcept {
+    constexpr operator ValueType() const noexcept
+    {
       return value;
     }
 
-    [[nodiscard]] constexpr ValueType operator()() const noexcept {
+    [[nodiscard]] constexpr ValueType operator()() const noexcept
+    {
       return value;
     }
   };
@@ -175,7 +177,7 @@ namespace Atl
   using removeR = RemoveReference<Type>::Type;
 
   export template <typename Type>
-  using removeCVR [[msvc::known_semantics]] = removeCV<removeR<Type>>;
+  using removeCVR = removeCV<removeR<Type>>;
 
   template <typename Type>
   using ConstThroughReference = RemoveReference<Type>::ConstThroughReference;
@@ -870,12 +872,12 @@ struct common_reference<Type1, Type2, T3, Rest...> : common_reference<common_ref
 };
 
   export template <typename T>
-  struct TypeIidentity {
+  struct TypeIdentity {
     using Type = T;
   };
 
   export template <typename Type>
-  using typeIdentity = TypeIidentity<Type>::Type;
+  using Identity = TypeIdentity<Type>::Type;
 
   template <typename Type, template <typename...> typename Template>
   constexpr Bool isSpecialization{false}; // true if and only if Type is a specialization of _Template
@@ -1209,5 +1211,33 @@ template <class _Ty>
 struct _Function_args {}; // determine whether _Ty is a function
 */
 //2068
+
+
+template <typename Type>
+concept IntType = requires { isSame<Type, Int>; };
+
+template <typename Type>
+concept IteratorType = requires { typename Type::IteratorCategory; };
+
+template <typename Type>
+concept Swappable = isMoveConstructible<Type> && isMoveAssignable<Type>;
+
+template <typename Type>
+concept PointerType = isPointer<Type>;
+
+template <typename Type>
+concept NotPointerType = !isPointer<Type>;
+
+struct InputIteratorTag {};
+
+struct OutputIteratorTag {};
+
+struct ForwardIteratorTag : InputIteratorTag {};
+
+struct BidirectionalIteratorTag : ForwardIteratorTag {};
+
+struct RandomAccessIteratorTag : BidirectionalIteratorTag {};
+
+struct ContiguousIteratorTag : RandomAccessIteratorTag {};
 
 }

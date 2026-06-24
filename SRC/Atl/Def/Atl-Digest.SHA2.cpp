@@ -19,7 +19,7 @@ import <stdlib.h>;
 #define convertLittleToBig(i) (w[i] = Atl::swapByte(chunk[i]))
 #define extend(i0, i1, i2, i) (w[i] += s0(i0) + w[i1] + s1(i2))
 
-static constexpr Atl::Void process(Atl::UInt32 digest[8], const Atl::UInt32 chunk[16]) noexcept
+[[msvc::forceinline]] static constexpr Atl::Void process(Atl::UInt32 digest[8], const Atl::UInt32 chunk[16]) noexcept
 {
   Atl::UInt32 h[8];
   Atl::UInt32 w[16];
@@ -107,7 +107,7 @@ const Atl::SHA256& Atl::SHA256::operator()(const UInt8* data, Size size) noexcep
   if (data && size) [[likely]] {
     const UInt8* i{data};
     for (const UInt8* end{data + size - 64}; i <= end; i += 64) {
-      [[msvc::forceinline]] process(data_, (UInt32*)i);
+      process(data_, (UInt32*)i);
     }
     copy(i, counter, buffer);
   }

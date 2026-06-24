@@ -7,7 +7,7 @@ import :Limits;
 namespace Atl
 {
   template <typename Type>
-  [[nodiscard]] constexpr Int lZero(Type value) noexcept {
+  [[nodiscard]] consteval Int lZero(Type value) noexcept {
     Type v;
 
     UInt32 n{sizeof(Type) << 3};

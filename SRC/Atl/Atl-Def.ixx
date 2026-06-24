@@ -72,6 +72,9 @@ namespace Atl
 
     Void*    memset(Void*, Int, Size);
     Void*    memcpy(Void*, const Void*, Size);
+    Void*    memmove(Void*, const Void*, Size);
+    Int      memcmp(const Void*, const Void*, Size);
+
 
     UInt8   _rotl8(UInt8, UInt8);
     UInt16  _rotl16(UInt16, UInt8);

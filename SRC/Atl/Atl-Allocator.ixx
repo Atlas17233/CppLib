@@ -12,17 +12,17 @@ namespace Atl
     class LargeAllocator
     {
     public:
-      [[nodiscard]] static Void* allocate(Size size) noexcept
+      [[msvc::forceinline]] [[nodiscard]] static Void* allocate(Size size) noexcept
       {
         return alloc(alignUpGranularity(size));
       }
 
-      [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
+      [[msvc::forceinline]] [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
       {
         return alignUpGranularity(capacity);
       }
 
-      [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
+      [[msvc::forceinline]] [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
       {
         capacity = alignUpPage(capacity);
         newCapacity = alignUpPage(newCapacity);
@@ -32,7 +32,7 @@ namespace Atl
         return capacity;
       }
 
-      static Void deallocate(Void* memory, Void* capacity) noexcept
+      [[msvc::forceinline]] static Void deallocate(Void* memory, Void* capacity) noexcept
       {
         release(memory);
       }
@@ -263,7 +263,7 @@ namespace Atl
           *node = l->index + r->index;
         }
 
-        [[msvc::forceinline]] Node* mergeC(Node* l, Node* r, UInt16* node) noexcept
+        Node* mergeC(Node* l, Node* r, UInt16* node) noexcept
         {
           while (l != nodes_ && r != nodes_) {
             if (l->cPriority < r->cPriority) {
@@ -349,29 +349,25 @@ namespace Atl
           return false;
         }
 
-        UInt16 alignUpNode(UInt16 size) noexcept { return size + 0xf >> 4; }
-
-        Node* alignUpNode(Node* node) noexcept { return (Node*)((UInt64)node + 0xf & 0xfffffffffffffff0); }
+        [[msvc::forceinline]] static Node* alignUpNode(Node* node) noexcept
+        {
+          return (Node*)((UInt64)node + 0xf & 0xfffffffffffffff0);
+        }
 
       public:
-        [[msvc::forceinline]] Void operator=(Chunk& chunk) noexcept
-        {
-          nodes_ = chunk.nodes_;
-          chunk.nodes_ = nullptr;
-        }
+        [[msvc::forceinline]] Void reset() noexcept { nodes_ = nullptr; }
 
         [[msvc::forceinline]] operator Bool() noexcept { return nodes_; }
 
-        [[msvc::forceinline]] Bool hasSize(UInt16 size) noexcept { return !nodes_ || alignUpNode(size) <= nodes_->pKey; }
+        [[msvc::forceinline]] Bool hasSize(UInt8 size) noexcept { return !nodes_ || size <= nodes_->pKey; }
 
         [[msvc::forceinline]] Bool has(Void* memory) noexcept
         {
           return nodes_ && nodes_ < memory && memory < nodes_ + 0x10000;
         }
 
-        Node* allocate(UInt16 size) noexcept
+        Node* allocate(UInt8 size) noexcept
         {
-          size = alignUpNode(size);
           if (!nodes_) {
             nodes_ = (Node*)alloc(1_MiB);
             nodes_->pKey = 0xff;
@@ -470,7 +466,7 @@ namespace Atl
             Node* end;
             if (capacity - nodes_ < 0x10000) {
               if (isFree(capacity->index, capacity->pKey)) {
-                if (memory == newCapacity && memory == nodes_ + 1 && capacity->index + capacity->size == 0x10000) {
+                if (newCapacity == nodes_ + 1 && capacity->index + capacity->size == 0x10000) {
                   release(nodes_);
                   nodes_ = nullptr;
                   return newCapacity;
@@ -496,8 +492,9 @@ namespace Atl
             SplitLMR pLMR{splitP3(newCapacity->pKey)};
             SplitLR cLR{splitC2(pLMR.m, newCapacity->index)};
             mergeP3(pLMR.l, mergeC3(cLR.l, newCapacity, cLR.r), pLMR.r);
+            return newCapacity;
           }
-          return newCapacity;
+          return capacity;
         }
 
         Void deallocate(Node* memory, Node* capacity) noexcept
@@ -560,9 +557,12 @@ namespace Atl
         Node* nodes_;
       };
 
+      [[msvc::forceinline]] static UInt16 alignUpNode(UInt16 size) noexcept { return size + 0xf >> 4; }
+
     public:
-      [[nodiscard]] static Void* allocate(UInt16 size) noexcept
+      [[msvc::forceinline]] [[nodiscard]] static Void* allocate(UInt16 size) noexcept
       {
+        size = alignUpNode(size);
         for (Chunk* i{chunks_}; i < end_; ++i) {
           if (i->hasSize(size)) {
             return i->allocate(size);
@@ -571,7 +571,7 @@ namespace Atl
         return end_++->allocate(size);
       }
 
-      [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
+      [[msvc::forceinline]] [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
       {
         for (Chunk* i{chunks_}; i < end_; ++i) {
           if (i->has(memory)) {
@@ -581,17 +581,22 @@ namespace Atl
         return capacity;
       }
 
-      [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
+      [[msvc::forceinline]] [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
       {
         for (Chunk* i{chunks_}; i < end_; ++i) {
           if (i->has(memory)) {
             capacity = i->shrink((Chunk::Node*)memory, (Chunk::Node*)capacity, (Chunk::Node*)newCapacity);
             if (!*i) {
-              if (i != --end_) {
-                *i = *end_;
+              if (i < --end_) {
+                Chunk* i1{i + 1};
+                *i = *i1;
+                while (i1 < end_) {
+                  *++i = *++i1;
+                }
+                end_->reset();
               }
               if (!((UInt64)end_ & 0xfff)) {
-                recommit(end_, 0x1000);
+                recommit(end_, PageSize);
               }
             }
             return capacity;
@@ -600,7 +605,7 @@ namespace Atl
         return capacity;
       }
 
-      static Void deallocate(Void* memory, Void* capacity) noexcept
+      [[msvc::forceinline]] static Void deallocate(Void* memory, Void* capacity) noexcept
       {
         for (Chunk* i{chunks_}; i < end_; ++i) {
           if (i->has(memory)) {
@@ -610,7 +615,7 @@ namespace Atl
                 *i = *end_;
               }
               if (!((UInt64)end_ & 0xfff)) {
-                recommit(end_, 0x1000);
+                recommit(end_, PageSize);
               }
             }
             return;
@@ -624,36 +629,36 @@ namespace Atl
     };
 
   public:
-    [[nodiscard]] static Void* allocate(Size size) noexcept
+    [[msvc::forceinline]] [[nodiscard]] static Void* allocate(Size size) noexcept
     {
-      if (size < 0x1000) {
+      if (size <= 4080) {
         return SmallAllocator::allocate(size);
       } else {
         return LargeAllocator::allocate(size);
       }
     }
 
-    [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
+    [[msvc::forceinline]] [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
     {
-      if ((UInt64)capacity - (UInt64)memory < 0x1000) {
+      if ((UInt64)capacity - (UInt64)memory <= 4080) {
         return SmallAllocator::expand(memory, capacity, newCapacity);
       } else {
         return LargeAllocator::expand(memory, capacity, newCapacity);
       }
     }
 
-    [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
+    [[msvc::forceinline]] [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
     {
-      if ((UInt64)capacity - (UInt64)memory < 0x1000) {
+      if ((UInt64)capacity - (UInt64)memory <= 4080) {
         return SmallAllocator::shrink(memory, capacity, newCapacity);
       } else {
         return LargeAllocator::shrink(memory, capacity, newCapacity);
       }
     }
 
-    static Void deallocate(Void* memory, Void* capacity) noexcept
+    [[msvc::forceinline]] static Void deallocate(Void* memory, Void* capacity) noexcept
     {
-      if ((UInt64)capacity - (UInt64)memory < 0x1000) {
+      if ((UInt64)capacity - (UInt64)memory <= 4080) {
         return SmallAllocator::deallocate(memory, capacity);
       } else {
         return LargeAllocator::deallocate(memory, capacity);
@@ -664,26 +669,28 @@ namespace Atl
   CompactBaseAllocator::SmallAllocator::Chunk* CompactBaseAllocator::SmallAllocator::chunks_{(Chunk*)alloc(0x200000)};
   CompactBaseAllocator::SmallAllocator::Chunk* CompactBaseAllocator::SmallAllocator::end_{chunks_};
 
-  template <typename Type, typename Allocator>
+  template <typename T, typename Allocator>
   class BaseAllocator
   {
   public:
-    [[nodiscard]] Type* allocate(Size size) noexcept
+    using Type = T;
+
+    [[msvc::forceinline]] [[nodiscard]] Type* allocate(Size size) noexcept
     {
-      return Allocator::allocate(size * sizeof(Type));
+      return (Type*)Allocator::allocate(size * sizeof(Type));
     }
 
-    [[nodiscard]] Type* expand(Type* memory, Type* capacity, Type* newCapacity) noexcept
+    [[msvc::forceinline]] [[nodiscard]] Type* expand(Type* memory, Type* capacity, Type* newCapacity) noexcept
     {
-      return memory + (Allocator::expand(memory, capacity, newCapacity) - memory);
+      return memory + ((Type*)Allocator::expand(memory, capacity, newCapacity) - memory);
     }
 
-    [[nodiscard]] Type* shrink(Type* memory, Type* capacity, Type* newCapacity) noexcept
+    [[msvc::forceinline]] [[nodiscard]] Type* shrink(Type* memory, Type* capacity, Type* newCapacity) noexcept
     {
-      return memory + (Allocator::shrink(memory, capacity, newCapacity) - memory);
+      return memory + ((Type*)Allocator::shrink(memory, capacity, newCapacity) - memory);
     }
 
-    Void deallocate(Type* memory, Type* capacity) noexcept
+    [[msvc::forceinline]] Void deallocate(Type* memory, Type* capacity) noexcept
     {
       Allocator::deallocate(memory, capacity);
     }
@@ -741,8 +748,8 @@ namespace Atl
       [[msvc::forceinline]] Byte* block(UInt8 i) noexcept { return begin_ + i * sizeBlock; }
 
     private:
-      Byte* begin_{nullptr};
-      Byte* end_{nullptr};
+      Byte* begin_{};
+      Byte* end_{};
       Int8 top_{};
       Int8 usedBlocks_{};
     };

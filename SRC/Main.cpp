@@ -7,8 +7,8 @@ Atl::Int Main(Atl::Int argc, Atl::Char *argv[])
 {
   try
   {
-    /*Deduplicator deduplicator{"C:/s/s.txt"};
-    deduplicator("C:/s");*/
+    //Deduplicator deduplicator{"C:/s/s.txt"};
+    //deduplicator("C:/s");
     std::cout << Atl::CRC32{Atl::File{"empty.txt"}} << '\n';
     std::cout << Atl::CRC32{""} << '\n';
     std::cout << Atl::CRC32{Atl::File{"loop.txt"}} << '\n';
@@ -51,6 +51,9 @@ Atl::Int Main(Atl::Int argc, Atl::Char *argv[])
       }
     }
     std::cout << count << "\n---------------\n";
+    Atl::Vector<Atl::Array<int, 3>> v;
+    v.reserve(5);
+
   }
   catch (const Atl::Exception &error)
   {
