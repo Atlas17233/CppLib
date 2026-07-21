@@ -3,6 +3,8 @@ export module Atl:Algorithm;
 import :Def;
 import :Type;
 
+import "Macros";
+
 namespace Atl
 {
   template <typename Type>
@@ -28,7 +30,7 @@ namespace Atl
   export
   {
     template <typename Iter1, typename Iter2>
-    [[msvc::forceinline]] [[nodiscard]] constexpr Int compare(Iter1 iter1, Iter2 iter2, Size size)
+    [[nodiscard]] constexpr Int compare(Iter1 iter1, Iter2 iter2, Size size)
     {
       if !consteval {
         if constexpr (sizeof(*iter1) == sizeof(*iter2)) {
@@ -57,7 +59,7 @@ namespace Atl
           }
         }
       }
-      while (begin < end) {
+      while (begin != end) {
         *begin++ = value;
       }
       return end;
@@ -78,7 +80,7 @@ namespace Atl
           }
         }
       }
-      while (begin < end) {
+      while (begin != end) {
         *begin++ = value;
       }
       return end;
@@ -93,7 +95,7 @@ namespace Atl
           return iTarget + (end - begin);
         }
       }
-      while (begin < end) {
+      while (begin != end) {
         *iTarget++ = *begin++;
       }
       return iTarget;
@@ -109,10 +111,72 @@ namespace Atl
           return iTarget + size;
         }
       }
-      while (begin < end) {
+      while (begin != end) {
         *iTarget++ = *begin++;
       }
       return iTarget;
     }
+
+    /*template <typename Iter1, typename Iter2, typename Pred>
+    [[nodiscard]] constexpr Bool equal(Iter1 begin1, Iter1 end1, Iter2 begin2, Pred pred) noexcept
+    {
+      if constexpr (_Equal_memcmp_is_safe<removeC<Iter1>, removeC<Iter2>, removeC<pred>>) {
+        if !consteval {
+          return !memcmp(&begin1, &begin2, (const Char*)end1 - (const Char*)begin1);
+        }
+      }
+      for (; begin1 < end1; ++begin1, ++begin2) {
+        if (!pred(*begin1, *begin2)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    template <typename Iter1, typename Iter2>
+    [[nodiscard]] constexpr Bool equal(Iter1 begin1, Iter1 end1, Iter2 begin2) noexcept
+    {
+      //return equal(begin1, end1, begin2, equalTo<>{});
+      if constexpr (_Equal_memcmp_is_safe<decltype(begin1), decltype(begin2), _Pr>) {
+        if !consteval {
+          return !memcmp(&begin1, &begin2, (const Char*)end1 - (const Char*)begin1);
+        }
+      }
+      for (; begin1 < end1; ++begin1, ++begin2) {
+        if (*begin1 != *begin2) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    template <typename Iter1, typename Iter2, typename Pred>
+    [[nodiscard]] constexpr Bool equal(Iter1 begin1, Iter1 end1, Iter2 begin2, Iter2 end2, Pred pred) noexcept
+    {
+      if constexpr (_Is_ranges_random_iter_v<_InIt1> && _Is_ranges_random_iter_v<_InIt2>) {
+        if (end1 - begin1 != end2 - begin2) {
+          return false;
+        }
+        return equal(begin1, end1, begin2, pred);
+      } else {
+        for (;; ++begin1, ++begin2) {
+          if (begin1 == end1) {
+            return begin2 == end2;
+          }
+          if (begin2 == end2) {
+            return false;
+          }
+          if (!pred(*begin1, *begin2)) {
+            return false;
+          }
+        }
+      }
+    }
+
+    template <class _InIt1, class _InIt2>
+    [[nodiscard]] constexpr Bool equal(const _InIt1 _First1, const _InIt1 _Last1, const _InIt2 _First2, const _InIt2 _Last2)
+    {
+      return equal(_First1, _Last1, _First2, _Last2, equal_to<>{});
+    }*/
   }
 }

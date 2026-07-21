@@ -1,6 +1,10 @@
 export module Atl:Array;
 
+import :Compare;
 import :Def;
+import :Type;
+
+import "Macros";
 
 namespace Atl
 {
@@ -84,6 +88,60 @@ namespace Atl
       [[nodiscard]] constexpr Type& back() noexcept { return data_[size_ - 1]; }
       [[nodiscard]] constexpr const Type* data() const noexcept { return data_; }
       [[nodiscard]] constexpr Type* data() noexcept { return data_; }
+
+      template <Size sizeRight>
+      requires (sizeRight > 0)
+      [[nodiscard]] constexpr Bool operator==(const Array<Type, sizeRight>& right) const noexcept
+      {
+        if (size() != right.size()) {
+          return false;
+        }
+        if constexpr (hasUniqueObjectRepresentations<Type>) {
+          if !consteval {
+            return !memcmp(begin(), right.begin(), (UInt8*)end() - (UInt8*)begin());
+          }
+        }
+        Type* begin1{begin()};
+        Type* end1{end()};
+        Type* begin2{right.begin()};
+        for (; begin1 < end1; ++begin1, ++begin2) {
+          if (*begin1 != *begin2) {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      template <Size sizeRight>
+      requires (sizeRight > 0)
+      [[nodiscard]] constexpr auto operator<=>(const Array<Type, sizeRight>& right) const noexcept -> decltype(declvalue<Type&>() <=> declvalue<Type&>())
+      {
+        if constexpr (isIntegral<Type>) {
+          if !consteval {
+            Size index{mismatchVectorized<sizeof(Type)>(begin(), right.begin(), min(size_, right.size_))};
+            if (index == size_) {
+              return index == right.size_ ? StrongOrdering::equal : StrongOrdering::less;
+            } else if (index == right.size_) {
+              return StrongOrdering::greater;
+            } else {
+              return data_[index] <=> right.data_[index];
+            }
+          }
+        }
+        Type* begin1{data_};
+        Type* end1{data_ + size_};
+        Type* begin2{right.data_};
+        Type* end2{right.data_ + size_};
+        for (;; ++begin1, ++begin2) {
+          if (begin1 == end1) {
+            return begin2 == end2 ? StrongOrdering::equal : StrongOrdering::less;
+          } else if (begin2 == end2) {
+            return StrongOrdering::greater;
+          } else if (*begin1 != *begin2) {
+            return *begin1 <=> *begin2;
+          }
+        }
+      }
 
     protected:
       Type data_[size_];

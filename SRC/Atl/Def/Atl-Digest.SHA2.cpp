@@ -3,6 +3,8 @@ module Atl:Digest.SHA2;
 import :Digest;
 import <stdlib.h>;
 
+import "../Macros";
+
 #define s0(i) (Atl::rotR(w[i],  7) ^ Atl::rotR(w[i], 18) ^ w[i] >>  3)
 #define s1(i) (Atl::rotR(w[i], 17) ^ Atl::rotR(w[i], 19) ^ w[i] >> 10)
 
@@ -19,7 +21,7 @@ import <stdlib.h>;
 #define convertLittleToBig(i) (w[i] = Atl::swapByte(chunk[i]))
 #define extend(i0, i1, i2, i) (w[i] += s0(i0) + w[i1] + s1(i2))
 
-[[msvc::forceinline]] static constexpr Atl::Void process(Atl::UInt32 digest[8], const Atl::UInt32 chunk[16]) noexcept
+forceinline static constexpr Atl::Void process(Atl::UInt32 digest[8], const Atl::UInt32 chunk[16]) noexcept
 {
   Atl::UInt32 h[8];
   Atl::UInt32 w[16];

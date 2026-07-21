@@ -5,27 +5,29 @@ import :Bit;
 import :Def;
 import :String;
 
+import "Macros";
+
 namespace Atl
 {
   template <StringLiteral name, Size size_>
   class Digest final: public Array<UInt32, size_>
   {
   public:
-    [[msvc::forceinline]] explicit constexpr Digest(const ConstString& str) noexcept
+    explicit constexpr Digest(const ConstString& str) noexcept
     {
       operator()(str);
     }
 
-    [[msvc::forceinline]] constexpr Void init() noexcept { copy(initValue, size_, Array<UInt32, size_>::data_); }
+    constexpr Void init() noexcept { copy(initValue, size_, Array<UInt32, size_>::data_); }
 
     constexpr const Digest& operator()(const UInt8* data, Size size) noexcept;
 
-    [[msvc::forceinline]] constexpr const Digest& operator()(const ConstString& str) noexcept
+    constexpr const Digest& operator()(const ConstString& str) noexcept
     {
       return operator()((UInt8*)str.data(), str.size());
     }
 
-    [[msvc::forceinline]] [[nodiscard]] constexpr std::string toString(const UInt8 table[16] = hex) const noexcept
+    [[nodiscard]] constexpr std::string toString(const UInt8 table[16] = hex) const noexcept
     {
       std::string result;
       result.reserve(size_ << 3);
@@ -43,7 +45,7 @@ namespace Atl
   export
   {
     template <StringLiteral name, Size size_>
-    [[msvc::forceinline]] constexpr std::ostream& operator<<(std::ostream& out, const Digest<name, size_>& digest) noexcept
+    constexpr std::ostream& operator<<(std::ostream& out, const Digest<name, size_>& digest) noexcept
     {
       return out << digest.toString();
     }

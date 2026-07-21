@@ -4,6 +4,8 @@ import :Concepts;
 import :Def;
 import :Limits;
 
+import "Macros";
+
 namespace Atl
 {
   template <typename Type>
@@ -29,7 +31,7 @@ namespace Atl
     constexpr UInt8 HEX[0x10]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
     template <StandardUnsignedIntegral Type>
-    [[msvc::forceinline]] [[nodiscard]] constexpr Type rotL(Type data, Int n) noexcept
+    [[nodiscard]] constexpr Type rotL(Type data, Int n) noexcept
     {
       if !consteval {
         if constexpr (sizeof(Type) == 1) {
@@ -47,7 +49,7 @@ namespace Atl
     }
 
     template <StandardUnsignedIntegral Type>
-    [[msvc::forceinline]] [[nodiscard]] constexpr Type rotR(Type data, Int n) noexcept
+    [[nodiscard]] constexpr Type rotR(Type data, Int n) noexcept
     {
       if !consteval {
         if constexpr (sizeof(Type) == 1) {
@@ -65,10 +67,10 @@ namespace Atl
     }
 
     template <StandardUnsignedIntegral Type>
-    [[msvc::forceinline]] [[nodiscard]] constexpr Int isolateLowestSetBit(Type value) noexcept { return value & -value; }
+    [[nodiscard]] constexpr Int isolateLowestSetBit(Type value) noexcept { return value & -value; }
 
     template <StandardUnsignedIntegral Type>
-    [[msvc::forceinline]] [[nodiscard]] constexpr Int countLeadingZero(const Type value) noexcept
+    [[nodiscard]] constexpr Int countLeadingZero(const Type value) noexcept
     {
       if !consteval {
         if constexpr (sizeof(Type) == 1) {
@@ -85,11 +87,13 @@ namespace Atl
     }
 
     template <StandardUnsignedIntegral Type>
-    [[msvc::forceinline]] [[nodiscard]] constexpr Int countTrailingZero(const Type value) noexcept
+    [[nodiscard]] constexpr Int countTrailingZero(const Type value) noexcept
     {
       if !consteval {
-        if constexpr (sizeof(Type) < 8) {
+        if constexpr (sizeof(Type) < 8/*4*/) {
           return _tzcnt_u32(~Max<Type> | value);
+        //else if constexpr (sizeof(Type) == 4) {
+          //return _tzcnt_u32(value);
         } else {
           return _tzcnt_u64(value);
         }
@@ -98,7 +102,7 @@ namespace Atl
     }
 
     template <StandardUnsignedIntegral Type>
-    [[msvc::forceinline]] [[nodiscard]] constexpr Type swapByte(const Type value) noexcept
+    [[nodiscard]] constexpr Type swapByte(const Type value) noexcept
     {
       if constexpr (sizeof(Type) == 1) {
         return value;
@@ -114,7 +118,7 @@ namespace Atl
 
     template <typename To, typename From>
     requires (sizeof(To) == sizeof(From) && isTriviallyCopyable<To> && isTriviallyCopyable<From>)
-    [[msvc::forceinline]] [[nodiscard]] constexpr To bitCast(const From& value) noexcept
+    [[nodiscard]] constexpr To bitCast(const From& value) noexcept
     {
       return __builtin_bit_cast(To, value);
     }

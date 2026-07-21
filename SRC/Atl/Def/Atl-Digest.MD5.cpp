@@ -2,6 +2,8 @@ module Atl:Digest.MD5;
 
 import :Digest;
 
+import "../Macros";
+
 #define F1(i0, i1, i2) (h[i2] ^ h[i0] & (h[i1] ^ h[i2]))
 #define F2(i0, i1, i2) (h[i1] ^ h[i2] & (h[i0] ^ h[i1]))
 #define F3(i0, i1, i2) (h[i0] ^ h[i1] ^ h[i2])
@@ -9,7 +11,7 @@ import :Digest;
 
 #define round(F, i0, i1, i2, i3, k, i, s) h[i0] = h[i1] + Atl::rotL(h[i0] + F(i1, i2, i3) + k + m[i], s)
 
-[[msvc::forceinline]] static constexpr Atl::Void process(Atl::UInt32 digest[4], const Atl::UInt32 m[16]) noexcept
+forceinline static constexpr Atl::Void process(Atl::UInt32 digest[4], const Atl::UInt32 m[16]) noexcept
 {
   Atl::UInt32 h[4];
   Atl::copy(digest, 4, h);

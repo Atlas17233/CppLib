@@ -2,6 +2,8 @@ export module Atl:Def;
 
 import std;
 
+import "Macros";
+
 namespace Atl
 {
   export
@@ -30,6 +32,28 @@ namespace Atl
 
     using Float = float;
     using Double = double;
+
+    union __declspec(intrin_type) alignas(32) F256
+    {
+      Float m256_f32[8];
+    };
+
+    union __declspec(intrin_type) alignas(32) D256
+    {
+      Double m256d_f64[4];
+    };
+
+    union __declspec(intrin_type) alignas(32) I256
+    {
+      Int8 m256i_i8[32];
+      Int16 m256i_i16[16];
+      Int32 m256i_i32[8];
+      Int64 m256i_i64[4];
+      UInt8 m256i_u8[32];
+      UInt16 m256i_u16[16];
+      UInt32 m256i_u32[8];
+      UInt64 m256i_u64[4];
+    };
 
 
     using Int = Int32;
@@ -90,6 +114,13 @@ namespace Atl
 
     UInt32  _tzcnt_u32(UInt32);
     UInt64  _tzcnt_u64(UInt64);
+
+    I256  _mm256_cmpeq_epi8(I256, I256);
+    I256  _mm256_loadu_si256(const I256*);
+    Int32 _mm256_movemask_epi8(I256);
+    Void  _mm256_zeroupper();
+    I256  _mm256_maskload_epi32(const Int32*, I256);
+
   }
 
   consteval UInt64 operator"" _KiB(UInt64 n) { return n * KiB; }

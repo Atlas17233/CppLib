@@ -4,6 +4,8 @@ import :Algorithm;
 import :Def;
 import :Type;
 
+import "Macros";
+
 namespace Atl
 {
   export

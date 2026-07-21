@@ -2,6 +2,8 @@ export module Atl:Exception;
 
 import :Def;
 
+import "Macros";
+
 namespace Atl
 {
   export

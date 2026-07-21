@@ -3,6 +3,8 @@ export module Atl:Limits;
 import :Def;
 import :Type;
 
+import "Macros";
+
 namespace Atl
 {
   export

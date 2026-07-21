@@ -3,7 +3,9 @@ export module Atl:Allocator;
 import :Def;
 import :Limits;
 import :Math;
-import :Memory;
+import :XMemory;
+
+import "Macros";
 
 namespace Atl
 {
@@ -12,17 +14,17 @@ namespace Atl
     class LargeAllocator
     {
     public:
-      [[msvc::forceinline]] [[nodiscard]] static Void* allocate(Size size) noexcept
+      [[nodiscard]] static Void* allocate(Size size) noexcept
       {
         return alloc(alignUpGranularity(size));
       }
 
-      [[msvc::forceinline]] [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
+      [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
       {
         return alignUpGranularity(capacity);
       }
 
-      [[msvc::forceinline]] [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
+      [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
       {
         capacity = alignUpPage(capacity);
         newCapacity = alignUpPage(newCapacity);
@@ -32,7 +34,7 @@ namespace Atl
         return capacity;
       }
 
-      [[msvc::forceinline]] static Void deallocate(Void* memory, Void* capacity) noexcept
+      static Void deallocate(Void* memory, Void* capacity) noexcept
       {
         release(memory);
       }
@@ -43,7 +45,7 @@ namespace Atl
       class Chunk
       {
       public:
-        struct alignas(0x10) Node
+        struct alignas(16) Node
         {
           UInt16 pL;
           UInt16 pR;
@@ -58,7 +60,7 @@ namespace Atl
             UInt8 pagePriority;
           };
 
-          [[msvc::forceinline]] Void makeFirst(UInt16 i) noexcept
+          Void makeFirst(UInt16 i) noexcept
           {
             index = i;
             size = 0x10000 - i;
@@ -66,7 +68,7 @@ namespace Atl
             pagePriority = priority[i];
           }
 
-          [[msvc::forceinline]] Void init(UInt16 i, UInt16 s) noexcept
+          Void init(UInt16 i, UInt16 s) noexcept
           {
             pL = 0;
             pR = 0;
@@ -85,7 +87,7 @@ namespace Atl
             }
           }
 
-          [[msvc::forceinline]] Void resize(UInt16 s) noexcept
+          Void resize(UInt16 s) noexcept
           {
             size = s;
             pKey = s <= 0xff ? s : 0xff;
@@ -349,19 +351,19 @@ namespace Atl
           return false;
         }
 
-        [[msvc::forceinline]] static Node* alignUpNode(Node* node) noexcept
+        static Node* alignUpNode(Node* node) noexcept
         {
           return (Node*)((UInt64)node + 0xf & 0xfffffffffffffff0);
         }
 
       public:
-        [[msvc::forceinline]] Void reset() noexcept { nodes_ = nullptr; }
+        Void reset() noexcept { nodes_ = nullptr; }
 
-        [[msvc::forceinline]] operator Bool() noexcept { return nodes_; }
+        operator Bool() noexcept { return nodes_; }
 
-        [[msvc::forceinline]] Bool hasSize(UInt8 size) noexcept { return !nodes_ || size <= nodes_->pKey; }
+        Bool hasSize(UInt8 size) noexcept { return !nodes_ || size <= nodes_->pKey; }
 
-        [[msvc::forceinline]] Bool has(Void* memory) noexcept
+        Bool has(Void* memory) noexcept
         {
           return nodes_ && nodes_ < memory && memory < nodes_ + 0x10000;
         }
@@ -486,7 +488,7 @@ namespace Atl
             if (nodes_->pKey < newCapacity->pKey) {
               nodes_->pKey = newCapacity->pKey;
             }
-            if (begin < end) {
+            if (begin != end) {
               recommit(begin, end - begin);
             }
             SplitLMR pLMR{splitP3(newCapacity->pKey)};
@@ -536,7 +538,7 @@ namespace Atl
             if (nodes_->pKey < memory->pKey) {
               nodes_->pKey = memory->pKey;
             }
-            if (begin < end) {
+            if (begin != end) {
               recommit(begin, end - begin);
             }
             SplitLMR pLMR{splitP3(memory->pKey)};
@@ -557,10 +559,10 @@ namespace Atl
         Node* nodes_;
       };
 
-      [[msvc::forceinline]] static UInt16 alignUpNode(UInt16 size) noexcept { return size + 0xf >> 4; }
+      static UInt16 alignUpNode(UInt16 size) noexcept { return size + 0xf >> 4; }
 
     public:
-      [[msvc::forceinline]] [[nodiscard]] static Void* allocate(UInt16 size) noexcept
+      [[nodiscard]] static Void* allocate(UInt16 size) noexcept
       {
         size = alignUpNode(size);
         for (Chunk* i{chunks_}; i < end_; ++i) {
@@ -571,7 +573,7 @@ namespace Atl
         return end_++->allocate(size);
       }
 
-      [[msvc::forceinline]] [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
+      [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
       {
         for (Chunk* i{chunks_}; i < end_; ++i) {
           if (i->has(memory)) {
@@ -581,7 +583,7 @@ namespace Atl
         return capacity;
       }
 
-      [[msvc::forceinline]] [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
+      [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
       {
         for (Chunk* i{chunks_}; i < end_; ++i) {
           if (i->has(memory)) {
@@ -605,7 +607,7 @@ namespace Atl
         return capacity;
       }
 
-      [[msvc::forceinline]] static Void deallocate(Void* memory, Void* capacity) noexcept
+      static Void deallocate(Void* memory, Void* capacity) noexcept
       {
         for (Chunk* i{chunks_}; i < end_; ++i) {
           if (i->has(memory)) {
@@ -629,7 +631,7 @@ namespace Atl
     };
 
   public:
-    [[msvc::forceinline]] [[nodiscard]] static Void* allocate(Size size) noexcept
+    [[nodiscard]] static Void* allocate(Size size) noexcept
     {
       if (size <= 4080) {
         return SmallAllocator::allocate(size);
@@ -638,7 +640,7 @@ namespace Atl
       }
     }
 
-    [[msvc::forceinline]] [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
+    [[nodiscard]] static Void* expand(Void* memory, Void* capacity, Void* newCapacity) noexcept
     {
       if ((UInt64)capacity - (UInt64)memory <= 4080) {
         return SmallAllocator::expand(memory, capacity, newCapacity);
@@ -647,7 +649,7 @@ namespace Atl
       }
     }
 
-    [[msvc::forceinline]] [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
+    [[nodiscard]] static Void* shrink(Void* memory, Void* capacity, Void* newCapacity) noexcept
     {
       if ((UInt64)capacity - (UInt64)memory <= 4080) {
         return SmallAllocator::shrink(memory, capacity, newCapacity);
@@ -656,7 +658,7 @@ namespace Atl
       }
     }
 
-    [[msvc::forceinline]] static Void deallocate(Void* memory, Void* capacity) noexcept
+    static Void deallocate(Void* memory, Void* capacity) noexcept
     {
       if ((UInt64)capacity - (UInt64)memory <= 4080) {
         return SmallAllocator::deallocate(memory, capacity);
@@ -675,22 +677,22 @@ namespace Atl
   public:
     using Type = T;
 
-    [[msvc::forceinline]] [[nodiscard]] Type* allocate(Size size) noexcept
+    [[nodiscard]] Type* allocate(Size size) noexcept
     {
       return (Type*)Allocator::allocate(size * sizeof(Type));
     }
 
-    [[msvc::forceinline]] [[nodiscard]] Type* expand(Type* memory, Type* capacity, Type* newCapacity) noexcept
+    [[nodiscard]] Type* expand(Type* memory, Type* capacity, Type* newCapacity) noexcept
     {
       return memory + ((Type*)Allocator::expand(memory, capacity, newCapacity) - memory);
     }
 
-    [[msvc::forceinline]] [[nodiscard]] Type* shrink(Type* memory, Type* capacity, Type* newCapacity) noexcept
+    [[nodiscard]] Type* shrink(Type* memory, Type* capacity, Type* newCapacity) noexcept
     {
       return memory + ((Type*)Allocator::shrink(memory, capacity, newCapacity) - memory);
     }
 
-    [[msvc::forceinline]] Void deallocate(Type* memory, Type* capacity) noexcept
+    Void deallocate(Type* memory, Type* capacity) noexcept
     {
       Allocator::deallocate(memory, capacity);
     }
@@ -745,7 +747,7 @@ namespace Atl
       //Bool notEmpty() const noexcept { return top_ >= 0; }
 
     private:
-      [[msvc::forceinline]] Byte* block(UInt8 i) noexcept { return begin_ + i * sizeBlock; }
+      Byte* block(UInt8 i) noexcept { return begin_ + i * sizeBlock; }
 
     private:
       Byte* begin_{};

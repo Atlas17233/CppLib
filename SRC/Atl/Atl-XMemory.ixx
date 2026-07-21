@@ -1,8 +1,11 @@
-export module Atl:Memory;
+export module Atl:XMemory;
 
 import :Def;
 import :Type;
+import :XUtility;
 import :Windows;
+
+import "Macros";
 
 namespace Atl
 {
@@ -14,35 +17,35 @@ namespace Atl
   }
 
   template <typename Type>
-  [[msvc::forceinline]] [[nodiscard]] constexpr Type alignUpPage(Type value) noexcept
+  [[nodiscard]] constexpr Type alignUpPage(Type value) noexcept
   {
     return (Type)((UInt64)value + 0xfff & 0xfffffffffffff000);
   }
 
   template <typename Type>
-  [[msvc::forceinline]] [[nodiscard]] constexpr Type alignDownPage(Type value) noexcept
+  [[nodiscard]] constexpr Type alignDownPage(Type value) noexcept
   {
     return (Type)((UInt64)value & 0xfffffffffffff000);
   }
 
   template <typename Type>
-  [[msvc::forceinline]] [[nodiscard]] constexpr Type alignUpGranularity(Type value) noexcept
+  [[nodiscard]] constexpr Type alignUpGranularity(Type value) noexcept
   {
     return (Type)((UInt64)value + 0xffff & 0xffffffffffff0000);
   }
 
   template <typename Type>
-  [[msvc::forceinline]] [[nodiscard]] constexpr Type alignDownGranularity(Type value) noexcept
+  [[nodiscard]] constexpr Type alignDownGranularity(Type value) noexcept
   {
     return (Type)((UInt64)value & 0xffffffffffff0000);
   }
 
-  [[msvc::forceinline]] [[nodiscard]] Void* reserve(Size size) noexcept
+  [[nodiscard]] Void* reserve(Size size) noexcept
   {
     return virtualAlloc(nullptr, size, Reserve, PageReadWrite);
   }
 
-  [[msvc::forceinline]] Void commit(Void* memory, Size size) noexcept
+  Void commit(Void* memory, Size size) noexcept
   {
     if (!virtualAlloc(memory, size, Commit, PageReadWrite)) [[unlikely]] {
       releaseMemory();
@@ -50,17 +53,17 @@ namespace Atl
     }
   }
 
-  [[msvc::forceinline]] Void decommit(Void* memory, Size size) noexcept
+  Void decommit(Void* memory, Size size) noexcept
   {
     virtualFree(memory, size, Decommit);
   }
 
-  [[msvc::forceinline]] Void release(Void* memory) noexcept
+  Void release(Void* memory) noexcept
   {
     virtualFree(memory, 0, Release);
   }
 
-  [[msvc::forceinline]] [[nodiscard]] Void* alloc(Size size) noexcept
+  [[nodiscard]] Void* alloc(Size size) noexcept
   {
     Void* memory{virtualAlloc(nullptr, size, Alloc, PageReadWrite)};
     if (!memory) [[unlikely]] {
@@ -70,13 +73,13 @@ namespace Atl
     return memory;
   }
 
-  [[msvc::forceinline]] Void recommit(Void* memory, Size size) noexcept
+  Void recommit(Void* memory, Size size) noexcept
   {
     decommit(memory, size);
     commit(memory, size);
   }
 
-  [[msvc::forceinline]] [[nodiscard]] Void* realloc(Void* memory, Void* capacity, Void* newCapacity) noexcept
+  [[nodiscard]] Void* realloc(Void* memory, Void* capacity, Void* newCapacity) noexcept
   {
     capacity = alignUpPage(capacity);
     newCapacity = alignUpPage(newCapacity);
@@ -123,10 +126,22 @@ namespace Atl
   }
 
   template <typename Type>
+  constexpr Void destroy(const Type& value) noexcept
+  {
+    if constexpr (!isTriviallyDestructible<Type>) {
+      if constexpr (isArray<Type>) {
+        destroyRange(&value, &value + extent<Type>);
+      } else {
+        value.~Type();
+      }
+    }
+  }
+
+  template <typename Type>
   constexpr Void destroyRange(Type* begin, const Type* end) noexcept
   {
     if constexpr (!isTriviallyDestructible<Type>) {
-      for (; begin < end; ++begin) {
+      for (; begin != end; ++begin) {
         if constexpr (isArray<Type>) {
           destroyRange(*begin, *begin + extent<Type>);
         } else {
@@ -136,26 +151,40 @@ namespace Atl
     }
   }
 
+  template <typename NoThrowFwdIt>
+  constexpr bool canMemsetConstruct = ContiguousIterator<NoThrowFwdIt> && isScalar<iterValue<NoThrowFwdIt>>
+    && !isVolatile<removeR<iterReference<NoThrowFwdIt>>> && !isMemberPointer<iterValue<NoThrowFwdIt>>;
+
   template <typename Type>
-  [[msvc::forceinline]] constexpr Void defaultConstruct(Type* begin, Type* end)
+  constexpr Void defaultConstruct(Type* begin, Type* end) noexcept
   {
-    if !consteval {
-      memset(begin, 0, (UInt8*)end - (UInt8*)begin);
-    } else {
-      while (begin < end) {
-        new (begin++) Type();
+    if constexpr (canMemsetConstruct<Type*>) {
+      if !consteval {
+        memset(begin, 0, (UInt64)end - (UInt64)begin);
+        return;
       }
+    }
+    while (begin != end) {
+      ::new (begin++) Type();
     }
   }
 
   template <typename Type>
-  [[msvc::forceinline]] constexpr Void defaultConstruct(Type* begin, Size size)
+  constexpr Void defaultConstructUnsafe(Type* begin, Type* end) noexcept
   {
-    defaultConstruct(begin, begin + size);
+    if constexpr (canMemsetConstruct<Type*>) {
+      if !consteval {
+        memset(begin, 0, (UInt64)end - (UInt64)begin);
+        return;
+      }
+    }
+    do {
+      ::new (begin) Type();
+    } while (++begin != end);
   }
 
   template <typename Type>
-  [[msvc::forceinline]] constexpr Void fillConstructRuntime(Type* begin, Type* end, Size size, const Type& value)
+  constexpr Void fillConstructRuntime(Type* begin, Type* end, Size size, const Type& value)
   {
     if !consteval {
       if constexpr (sizeof(*begin) == 1) {
@@ -163,7 +192,7 @@ namespace Atl
         return;
       } else {
         if (isZero(value)) {
-          memset(begin, 0, (UInt8*)end - (UInt8*)begin);
+          memset(begin, 0, (UInt64)end - (UInt64)begin);
           return;
         }
       }
@@ -171,62 +200,62 @@ namespace Atl
   }
 
   template <typename Type>
-  [[msvc::forceinline]] constexpr Void fillConstruct(Type* begin, Type* end, const Type& value)
+  constexpr Void fillConstruct(Type* begin, Type* end, const Type& value)
   {
     fillConstructRuntime(begin, end, end - begin, value);
-    while (begin < end) {
-      new (begin++) Type(value);
+    while (begin != end) {
+      ::new (begin++) Type(value);
     }
   }
 
   template <typename Type>
-  [[msvc::forceinline]] constexpr Void fillConstruct(Type* begin, Size size, const Type& value)
+  constexpr Void fillConstruct(Type* begin, Size size, const Type& value)
   {
     fillConstructRuntime(begin, begin + size, size, value);
-    while (begin < end) {
-      new (begin++) Type(value);
+    while (begin != end) {
+      ::new (begin++) Type(value);
     }
   }
 
   template <typename Type>
-  [[msvc::forceinline]] constexpr Void fillConstructUnsafe(Type* begin, Type* end, const Type& value)
+  constexpr Void fillConstructUnsafe(Type* begin, Type* end, const Type& value)
   {
     fillConstructRuntime(begin, end, end - begin, value);
     do {
-      new (begin) Type(value);
-    } while (++begin < end);
+      ::new (begin) Type(value);
+    } while (++begin != end);
   }
 
   template <typename Type>
-  [[msvc::forceinline]] constexpr Void fillConstructUnsafe(Type* begin, Size size, const Type& value)
+  constexpr Void fillConstructUnsafe(Type* begin, Size size, const Type& value)
   {
     fillConstructRuntime(begin, begin + size, size, value);
     do {
-      new (begin) Type(value);
-    } while (++begin < end);
+      ::new (begin) Type(value);
+    } while (++begin != end);
   }
 
   template <typename Type>
-  [[msvc::forceinline]] constexpr Void copyConstruct(const Type* begin, const Type* end, Type* dest)
+  constexpr Void copyConstruct(const Type* begin, const Type* end, Type* dest)
   {
     if !consteval {
-      memcpy(dest, begin, (UInt8*)end - (UInt8*)begin);
+      memcpy(dest, begin, (UInt64)end - (UInt64)begin);
     } else {
-      while (begin < end) {
-        new (dest++) Type(*begin++);
+      while (begin != end) {
+        ::new (dest++) Type(*begin++);
       }
     }
   }
 
   template <typename Type>
-  [[msvc::forceinline]] constexpr Void copyConstruct(const Type* begin, Size size, Type* dest)
+  constexpr Void copyConstruct(const Type* begin, Size size, Type* dest)
   {
     copyConstruct(begin, begin + size, dest);
   }
 
   template <NotPointerType Pointer>
   constexpr Pointer refancyMaybeNull(typename Pointer::Type* pointer) noexcept {
-    return pointer == nullptr ? Pointer{} : addressOf(*pointer);
+    return addressOf(*pointer);
   }
 
   template <PointerType Ptr>

@@ -5,6 +5,8 @@ import :Compare;
 import :Def;
 import :InitializerList;
 
+import "Macros";
+
 namespace Atl
 {
   export
@@ -20,14 +22,14 @@ namespace Atl
         capacity_ = nullptr;
       }
 
-      constexpr Void construct(Size size) noexcept
+      constexpr Void construct(Size size) noexcept//t
       {
         begin_ = Alloc::allocate(size);
         end_ = begin_ + size;
         capacity_ = end_;
       }
 
-      constexpr Bool enoughCapacity(Size size) noexcept
+      [[nodiscard]] constexpr Bool enoughCapacity(Size size) noexcept//t
       {
         destroyRange(begin_, end_);
         if (capacity() < size) {
@@ -41,7 +43,7 @@ namespace Atl
         return true;
       }
 
-      constexpr Void destruct() noexcept
+      constexpr Void destruct() noexcept//t
       {
         if (capacity_) {
           destroyRange(begin_, end_);
@@ -50,13 +52,12 @@ namespace Atl
       }
 
       template <typename... Type>
-      constexpr Void constructN(Size size, Type&&... value) noexcept
+      constexpr Void constructN(Size size, Type&&... value) noexcept//t
       {
         if (size) {
           construct(size);
-
           if constexpr (sizeof...(value) == 0) {
-            defaultConstruct(begin_, size);
+            defaultConstructUnsafe(begin_, end_);
           } else if constexpr (sizeof...(value) == 1) {
             fillConstruct(begin_, size, value...);
           } else if constexpr (sizeof...(value) == 2) {
@@ -67,15 +68,23 @@ namespace Atl
         }
       }
 
+    template <typename Iter, typename Sent>
+    constexpr Void appendUncountedRange(Iter begin, const Sent end)
+    {
+        for (; begin != end; ++begin) {
+          _Emplace_one_at_back(*begin);
+        }
+    }
+
     public:
       using Alloc = AllocType;
       using Type = T;
 
-      class ConstIterator
+      class ConstIterator//t
       {
       public:
-        using IteratorConcept = ContiguousIteratorTag;
-        using IteratorCategory = RandomAccessIteratorTag;
+        using IteratorConcept = ContiguousIteratorTag;//T
+        using IteratorCategory = RandomAccessIteratorTag;//T
 
         using Type = T;
         using Container = Vector<Type, Alloc>;
@@ -98,7 +107,7 @@ namespace Atl
 
         constexpr ConstIterator operator++(int) noexcept
         {
-          ConstIterator tmp{*this};
+          ConstIterator tmp{pointer_};
           ++pointer_;
           return tmp;
         }
@@ -111,7 +120,7 @@ namespace Atl
 
         constexpr ConstIterator operator--(int) noexcept
         {
-          ConstIterator tmp{*this};
+          ConstIterator tmp{pointer_};
           --pointer_;
           return tmp;
         }
@@ -158,17 +167,16 @@ namespace Atl
           return pointer_ <=> right.pointer_;
         }
 
-      protected:
         Type* pointer_{};
       };
 
-      class Iterator: public ConstIterator
+      class Iterator: public ConstIterator//t
       {
       public:
         using Base = ConstIterator;
 
-        using IteratorConcept = ContiguousIteratorTag;
-        using IteratorCategory = RandomAccessIteratorTag;
+        using IteratorConcept = ContiguousIteratorTag;//T
+        using IteratorCategory = RandomAccessIteratorTag;//T
 
         using Type = T;
         using Container = Vector<Type, Alloc>;
@@ -239,60 +247,61 @@ namespace Atl
         }
       };
 
-      constexpr Vector() noexcept
+      constexpr explicit Vector(Alloc&& allocator = Alloc()) noexcept: Alloc{forward<Alloc>(allocator)}
       {
         constructDefault();
       }
 
-      constexpr explicit Vector(Alloc&& alloc) noexcept: Alloc{forward<Alloc>(alloc)}
-      {
-        constructDefault();
-      }
-
-      constexpr explicit Vector(Size size, Alloc&& alloc = Alloc()) noexcept: Alloc{forward<Alloc>(alloc)}
+      constexpr explicit Vector(Size size, Alloc&& allocator = Alloc()) noexcept: Alloc{forward<Alloc>(allocator)}
       {
         constructN(size);
       }
 
-      constexpr Vector(Size size, const Type& value, Alloc&& alloc = Alloc()) noexcept: Alloc{forward<Alloc>(alloc)}
+      constexpr Vector(Size size, const Type& value, Alloc&& allocator = Alloc()) noexcept: Alloc{forward<Alloc>(allocator)}
       {
         constructN(size, value);
       }
 
       template <IteratorType Iter>
-      constexpr Vector(Iter begin, Iter end, Alloc&& alloc = Alloc()) noexcept: Alloc{forward<Alloc>(alloc)}
+      constexpr Vector(Iter begin, Iter end, Alloc&& allocator = Alloc()) noexcept: Alloc{forward<Alloc>(allocator)}//t
       {
-        constructN(size, begin, end);
+        if constexpr (isForwardIterator<Iter>) {
+          constructN(distance(begin, end), move(begin), move(end));
+        } else if constexpr (ForwardIterator<Iter>) {
+          //constructN(Ranges::distance(begin, end), move(begin), move(end));
+        } else {
+          appendUncountedRange(move(begin), move(end));
+        }
       }
 
-      constexpr Vector(InitializerList<Type> list, Alloc&& alloc = Alloc()) noexcept: Alloc{forward<Alloc>(alloc)}
+      constexpr Vector(InitializerList<Type> list, Alloc&& allocator = Alloc()) noexcept: Alloc{forward<Alloc>(allocator)}
       {
         constructN(list.size(), list.begin(), list.end());
       }
 
-      constexpr Vector(const Vector& right) noexcept: Alloc{right}
+      constexpr Vector(const Vector& right) noexcept: Alloc{right}//t
       {
         constructN(right.size(), right.begin_, right.end_);
       }
 
-      constexpr Vector(const Vector& right, Identity<Alloc>&& alloc) noexcept: Alloc{forward<Alloc>(alloc)}
+      constexpr Vector(const Vector& right, Identity<Alloc>&& allocator) noexcept: Alloc{forward<Alloc>(allocator)}//t
       {
         constructN(right.size(), right.begin_, right.end_);
       }
 
       constexpr Vector(Vector&& right) noexcept:
-        Alloc{move(right)}, begin_{right.begin_}, end_{right.end_}, capacity_{right.capacity_}
+        Alloc{move(right)}, begin_{right.begin_}, end_{right.end_}, capacity_{right.capacity_}//t
       {
         right.constructDefault();
       }
 
-      constexpr Vector(Vector&& right, Identity<Alloc>&& alloc) noexcept:
-        Alloc{forward<Alloc>(alloc)}, begin_{right.begin_}, end_{right.end_}, capacity_{right.capacity_}
+      constexpr Vector(Vector&& right, Identity<Alloc>&& allocator) noexcept:
+        Alloc{forward<Alloc>(allocator)}, begin_{right.begin_}, end_{right.end_}, capacity_{right.capacity_}//t
       {
         right.constructDefault();
       }
 
-      constexpr Vector& operator=(Vector&& right) noexcept
+      constexpr Vector& operator=(Vector&& right) noexcept//t
       {
         if (this != addressOf(right)) [[likely]] {
           destruct();
@@ -304,24 +313,24 @@ namespace Atl
         return *this;
       }
 
-      constexpr Vector& operator=(const Vector& right) noexcept
+      constexpr Vector& operator=(const Vector& right) noexcept//t
       {
         assign(right.begin(), right.end());
         return *this;
       }
 
-      constexpr Vector& operator=(InitializerList<Type> list)
+      constexpr Vector& operator=(InitializerList<Type> list)//t
       {
         assign(list.begin(), list.end());
         return *this;
       }
 
-      constexpr ~Vector() noexcept
+      constexpr ~Vector() noexcept//t
       {
         destruct();
       }
 
-      constexpr Void assign(Size size, const Type& value) noexcept
+      constexpr Void assign(Size size, const Type& value) noexcept//t
       {
         if (capacity_) {
           if (enoughCapacity(size)) {
@@ -336,7 +345,7 @@ namespace Atl
       }
 
       template <IteratorType Iter>
-      constexpr Void assign(Iter begin, Iter end) noexcept
+      constexpr Void assign(Iter begin, Iter end) noexcept//t
       {
         Size size{end - begin};
         if (capacity_) {
@@ -351,12 +360,12 @@ namespace Atl
         }
       }
 
-      constexpr Void assign(const InitializerList<Type> list) noexcept
+      constexpr Void assign(const InitializerList<Type> list) noexcept//t
       {
         assign(list.begin(), list.end());
       }
 
-      constexpr Void reserve(Size newCapacity) noexcept
+      constexpr Void reserve(Size newCapacity) noexcept//t
       {
         if (capacity_) {
           capacity_ = Alloc::expand(begin_, capacity_, begin_ + newCapacity);
@@ -387,7 +396,7 @@ namespace Atl
         }
       }
 
-      constexpr Void shrink() noexcept
+      constexpr Void shrink() noexcept//t
       {
         if (end_ < capacity_) {
           capacity_ = Alloc::shrink(begin_, capacity_, end_);
@@ -397,12 +406,56 @@ namespace Atl
         }
       }
 
+    /*constexpr Iterator erase(ConstIterator position) noexcept
+    {
+        const pointer _Whereptr = _Where._Ptr;
+        auto& _My_data          = _Mypair._Myval2;
+        pointer& _Mylast        = _My_data._Mylast;
+
+
+        if constexpr (!isTriviallyDestructible<Type>) {
+          if constexpr (isArray<Type>) {
+            destroyRange((Type*)position, (Type*)position + extent<Type>);
+          } else {
+            position->~Type();
+          }
+        }
+
+        _STD _Move_unchecked(_Whereptr + 1, _Mylast, _Whereptr);
+        if !consteval {
+          _Copy_memmove(_First, _Last, _Dest);
+        }
+        for (; _First != _Last; ++_Dest, (void) ++_First) {
+          *_Dest = _STD move(*_First);
+        }
+
+
+        _Alty_traits::destroy(_Getal(), --end_);
+        return iterator(_Whereptr, _STD addressof(_My_data));
+    }
+
+    constexpr Iterator erase(ConstIterator begin, ConstIterator end) noexcept
+    {
+        const pointer beginptr = begin._Ptr;
+        const pointer endptr  = end._Ptr;
+        auto& _My_data          = _Mypair._Myval2;
+        pointer& _Mylast        = _My_data._Mylast;
+
+        if (beginptr != endptr) {
+            const pointer _Newlast = _STD _Move_unchecked(endptr, _Mylast, beginptr);
+            _Destroy_range(_Newlast, _Mylast, _Getal());
+            _Mylast = _Newlast;
+        }
+
+        return iterator(beginptr, _STD addressof(_My_data));
+    }
+
       constexpr Void clear() noexcept
       {
         destroyRange(begin_, end_);
         end_ = begin_;
       }
-/*
+
       constexpr iterator insert(const_iterator _Where, const _Ty& _Val) { // insert _Val at _Where
         return emplace(_Where, _Val);
       }
@@ -542,53 +595,61 @@ namespace Atl
         }
 
         return _Make_iterator(_Emplace_reallocate(_Whereptr, _STD forward<Type>(_Val)...));
-      }
-*/
-      [[nodiscard]] constexpr Bool operator==(const Vector<Type, Alloc>& right)
+      }*/
+
+      [[nodiscard]] constexpr Bool operator==(const Vector<Type, Alloc>& right) const noexcept//t
       {
         if (size() != right.size()) {
           return false;
         }
-
-        return equal(begin_, end_, right._Unchecked_begin());
+        if constexpr (hasUniqueObjectRepresentations<Type>) {
+          if !consteval {
+            return !memcmp(begin_, right.begin_, (UInt64)end_ - (UInt64)begin_);
+          }
+        }
+        Type* begin1{begin_};
+        Type* end1{end_};
+        Type* begin2{right.begin_};
+        for (; begin1 < end1; ++begin1, ++begin2) {
+          if (*begin1 != *begin2) {
+            return false;
+          }
+        }
+        return true;
       }
 
-      [[nodiscard]] constexpr auto operator<=>(const Vector<T, AllocType>& right)
-          -> decltype(*begin1 <=> *begin2) noexcept
+      [[nodiscard]] constexpr auto operator<=>(const Vector<T, AllocType>& right) const noexcept -> decltype(declvalue<Type&>() <=> declvalue<Type&>())//t
       {
+        if constexpr (isIntegral<Type>) {
+          if !consteval {
+            Size size1{end_ - begin_};
+            Size size2{right.end_ - right.begin_};
+            Size index{mismatchVectorized(begin_, right.begin_, min(size1, size2))};
+            if (index == size1) {
+              return index == size2 ? StrongOrdering::equal : StrongOrdering::less;
+            } else if (index == size2) {
+              return StrongOrdering::greater;
+            } else {
+              return begin_[index] <=> right.begin_[index];
+            }
+          }
+        }
         Type* begin1{begin_};
         Type* end1{end_};
         Type* begin2{right.begin_};
         Type* end2{right.end_};
-
-        using _Memcmp_pred = _Lex_compare_three_way_memcmp_classify<decltype(_UFirst1), decltype(_UFirst2), _Cmp>;
-        if constexpr (!is_void_v<_Memcmp_pred>) {
-          if !consteval {
-            Size size1{end_ - begin_};
-            Size size2{right.end_ - right.begin_};
-            Size minSize{min(size1, size2)};
-            Size index{_Mismatch_vectorized<sizeof(Type)>(begin1, begin2, minSize)};
-            if (index == size1) {
-              return index == size2 ? StrongOrdering::Equal : StrongOrdering::Less;
-            } else if (index == size2) {
-              return StrongOrdering::Greater;
-            } else {
-              return _Comp(begin1[index], begin2[index]);
-            }
-          }
-        }
-        for (; true; ++begin1, ++begin2) {
+        for (;; ++begin1, ++begin2) {
           if (begin1 == end1) {
-            return begin2 == end2 ? StrongOrdering::Equal : StrongOrdering::Less;
+            return begin2 == end2 ? StrongOrdering::equal : StrongOrdering::less;
           } else if (begin2 == end2) {
-            return StrongOrdering::Greater;
+            return StrongOrdering::greater;
           } else if (*begin1 != *begin2) {
             return *begin1 <=> *begin2;
           }
         }
       }
 
-      constexpr Void swap(Vector& right) noexcept
+      constexpr Void swap(Vector<T, AllocType>& right) noexcept//t
       {
         if (this != addressOf(right)) [[likely]] {
           swap(begin_, right.begin_);
@@ -597,24 +658,33 @@ namespace Atl
         }
       }
 
-      friend constexpr Void swap(Vector<T, AllocType>& left, Vector<T, AllocType>& right) noexcept
+      friend constexpr Void swap(Vector<T, AllocType>& left, Vector<T, AllocType>& right) noexcept//t
       {
         left.swap(right);
       }
 
-      [[msvc::forceinline]] [[nodiscard]] constexpr Bool empty() const noexcept { return begin_ == end_; }
-      [[msvc::forceinline]] [[nodiscard]] constexpr Size size() const noexcept { return end_ - begin_; }
-      [[msvc::forceinline]] [[nodiscard]] constexpr Size capacity() const noexcept { return capacity_ - begin_; }
+      [[nodiscard]] constexpr Bool empty() const noexcept { return begin_ == end_; }//t
+      [[nodiscard]] constexpr Size size() const noexcept { return end_ - begin_; }//t
+      [[nodiscard]] constexpr Size capacity() const noexcept { return capacity_ - begin_; }//t
 
-      [[msvc::forceinline]] [[nodiscard]] constexpr const Type& operator[](Size i) const noexcept { return begin_[i]; }
-      [[msvc::forceinline]] [[nodiscard]] constexpr Type& operator[](Size i) noexcept { return begin_[i]; }
-      [[msvc::forceinline]] [[nodiscard]] constexpr const Type& front() const noexcept { return *begin_; }
-      [[msvc::forceinline]] [[nodiscard]] constexpr Type& front() noexcept { return *begin_; }
-      [[msvc::forceinline]] [[nodiscard]] constexpr const Type& back() const noexcept { return end_[-1]; }
-      [[msvc::forceinline]] [[nodiscard]] constexpr Type& back() noexcept { return end_[-1]; }
-      [[msvc::forceinline]] [[nodiscard]] constexpr const Type* data() const noexcept { return begin_; }
-      [[msvc::forceinline]] [[nodiscard]] constexpr Type* data() noexcept { return begin_; }
-      [[msvc::forceinline]] [[nodiscard]] constexpr Alloc get_allocator() const noexcept { return *this; }
+      [[nodiscard]] constexpr const Type& operator[](Size i) const noexcept { return begin_[i]; }//t
+      [[nodiscard]] constexpr Type& operator[](Size i) noexcept { return begin_[i]; }//t
+      [[nodiscard]] constexpr const Type& front() const noexcept { return *begin_; }//t
+      [[nodiscard]] constexpr Type& front() noexcept { return *begin_; }//t
+      [[nodiscard]] constexpr const Type& back() const noexcept { return end_[-1]; }//t
+      [[nodiscard]] constexpr Type& back() noexcept { return end_[-1]; }//t
+      [[nodiscard]] constexpr const Type* data() const noexcept { return begin_; }//t
+      [[nodiscard]] constexpr Type* data() noexcept { return begin_; }//t
+
+      [[nodiscard]] constexpr Iterator begin() noexcept { return {begin_}; }//t
+      [[nodiscard]] constexpr ConstIterator begin() const noexcept { return {begin_}; }//t
+      [[nodiscard]] constexpr Iterator end() noexcept { return {end_}; }//t
+      [[nodiscard]] constexpr ConstIterator end() const noexcept { return {end_}; }//t
+
+      [[nodiscard]] constexpr ConstIterator cbegin() const noexcept { return {begin_}; }//t
+      [[nodiscard]] constexpr ConstIterator cend() const noexcept { return {end_}; }//t
+
+      [[nodiscard]] constexpr Alloc getAllocator() const noexcept { return *this; }//t
 
     private:
       Type* begin_;

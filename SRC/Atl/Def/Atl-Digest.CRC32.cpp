@@ -2,6 +2,8 @@ module Atl:Digest.CRC32;
 
 import :Digest;
 
+import "../Macros";
+
 template <>
 constexpr Atl::UInt32 Atl::CRC32::initValue[1]{0xffffffff};
 

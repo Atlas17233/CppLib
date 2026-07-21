@@ -1,0 +1,16 @@
+#ifndef Macros
+#define Macros
+
+#define forceinline __forceinline
+
+//windows.h
+#define invalidHandle (Void*)Max<UInt64>
+#define virtualAlloc VirtualAlloc
+#define virtualFree VirtualFree
+#define createFile CreateFileW
+#define createFileMapping CreateFileMappingW
+#define mapViewOfFile MapViewOfFile
+#define unmapViewOfFile UnmapViewOfFile
+#define closeHandle CloseHandle
+
+#endif
